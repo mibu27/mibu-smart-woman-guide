@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 
 const Belanja = () => {
@@ -78,6 +79,8 @@ const Belanja = () => {
     (sum, item) => sum + item.price, 0
   );
   
+  const isOverBudget = batasHarian > 0 && totalSpending > batasHarian;
+  
   const handleSaveIncome = () => {
     if (gajiBulanan <= 0) {
       toast.error("Gaji bulanan harus lebih dari 0");
@@ -95,6 +98,16 @@ const Belanja = () => {
   return (
     <MainLayout title="Belanja">
       <div className="space-y-6">
+        {/* Budget Alert */}
+        {isOverBudget && (
+          <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            <AlertDescription>
+              Belanja hari ini melebihi batas harian! (Rp {totalSpending.toLocaleString()} dari batas Rp {batasHarian.toLocaleString()})
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <section className="animate-fade-in">
           <h2 className="text-lg font-medium mb-3">Set Gaji</h2>
           <Card>
@@ -190,10 +203,12 @@ const Belanja = () => {
               
               <div className="border-t pt-3 mt-3 flex justify-between font-medium">
                 <span>Total Belanja</span>
-                <span>Rp {totalSpending.toLocaleString('id-ID')}</span>
+                <span className={isOverBudget ? 'text-red-600' : ''}>
+                  Rp {totalSpending.toLocaleString('id-ID')}
+                </span>
               </div>
               
-              {batasHarian > 0 && totalSpending > batasHarian && (
+              {isOverBudget && (
                 <div className="flex items-center p-2 bg-red-50 text-red-800 rounded-md border border-red-200">
                   <AlertTriangle size={20} className="mr-2" />
                   <span className="text-sm">Belanja hari ini melebihi batas harian!</span>

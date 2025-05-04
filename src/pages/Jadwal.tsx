@@ -10,21 +10,38 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, CalendarIcon, Clock, MapPin } from 'lucide-react';
 
+interface TodoItem {
+  id: number;
+  text: string;
+  completed: boolean;
+}
+
+interface ImportantEvent {
+  id: number;
+  text: string;
+  location: string;
+  date: Date;
+}
+
 const Jadwal = () => {
   const [date, setDate] = useState<Date>(new Date());
-  const [todoList, setTodoList] = useState<{id: number; text: string; completed: boolean}[]>([
+  const [todoList, setTodoList] = useState<TodoItem[]>([
     { id: 1, text: "Pertemuan dengan guru 09:00", completed: false },
     { id: 2, text: "Antar anak les 15:30", completed: true },
     { id: 3, text: "Belanja bahan masakan", completed: false }
   ]);
   
-  const [importantEvents, setImportantEvents] = useState<{id: number; text: string; location: string}[]>([
-    { id: 1, text: "Pengajian ibu-ibu 19:30", location: "Masjid Al-Ikhlas" },
-    { id: 2, text: "Ulang tahun suami", location: "Rumah" }
+  const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([
+    { id: 1, text: "Pengajian ibu-ibu 19:30", location: "Masjid Al-Ikhlas", date: new Date() },
+    { id: 2, text: "Ulang tahun suami", location: "Rumah", date: new Date(new Date().setDate(new Date().getDate() + 5)) }
   ]);
   
   const [newTodo, setNewTodo] = useState("");
-  const [newEvent, setNewEvent] = useState({ text: "", location: "" });
+  const [newEvent, setNewEvent] = useState({ 
+    text: "", 
+    location: "",
+    date: new Date()
+  });
   
   const handleAddTodo = () => {
     if (!newTodo.trim()) return;
@@ -53,13 +70,22 @@ const Jadwal = () => {
     setImportantEvents([...importantEvents, {
       id: Date.now(),
       text: newEvent.text,
-      location: newEvent.location
+      location: newEvent.location,
+      date: newEvent.date
     }]);
-    setNewEvent({ text: "", location: "" });
+    setNewEvent({ text: "", location: "", date: new Date() });
   };
   
   const handleRemoveEvent = (id: number) => {
     setImportantEvents(importantEvents.filter(event => event.id !== id));
+  };
+  
+  const handleEventDateChange = (date: Date | undefined, id: number) => {
+    if (!date) return;
+    
+    setImportantEvents(importantEvents.map(event => 
+      event.id === id ? { ...event, date } : event
+    ));
   };
   
   return (
@@ -142,7 +168,7 @@ const Jadwal = () => {
           </div>
           <Card>
             <CardContent className="p-4 space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Input 
                   value={newEvent.text} 
                   onChange={(e) => setNewEvent({...newEvent, text: e.target.value})}
@@ -153,6 +179,25 @@ const Jadwal = () => {
                   onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
                   placeholder="Lokasi" 
                 />
+                <div className="flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(newEvent.date, "d MMMM yyyy", { locale: idLocale })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={newEvent.date}
+                        onSelect={(date) => date && setNewEvent({...newEvent, date})}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="flex justify-end">
                   <Button onClick={handleAddEvent}>Tambah Kegiatan</Button>
                 </div>
@@ -172,6 +217,25 @@ const Jadwal = () => {
                     </div>
                     <div className="text-sm text-mibu-gray flex items-center mt-1">
                       <MapPin size={14} className="mr-1" /> {event.location}
+                    </div>
+                    <div className="flex items-center mt-2 text-sm text-mibu-gray">
+                      <CalendarIcon size={14} className="mr-1" />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="text-left hover:text-mibu-purple">
+                            {format(event.date, "d MMMM yyyy", { locale: idLocale })}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={event.date}
+                            onSelect={(date) => handleEventDateChange(date, event.id)}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </li>
                 ))}

@@ -3,8 +3,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
-  Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users 
+  Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users, AlertTriangle
 } from 'lucide-react';
 
 const shortcuts = [
@@ -58,9 +59,24 @@ const shoppingList = [
   { id: 3, name: "Daging Ayam 1kg", price: 45000 }
 ];
 
+// For example only - In a real app, this would be from your state/context
+const totalSpending = shoppingList.reduce((sum, item) => sum + item.price, 0);
+const batasHarian = 150000; // Example value - would come from context/state
+const isOverBudget = totalSpending > batasHarian;
+
 const Beranda = () => {
   return (
     <MainLayout title="Beranda">
+      {/* Budget Alert */}
+      {isOverBudget && (
+        <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
+          <AlertTriangle className="h-4 w-4 mr-2" />
+          <AlertDescription>
+            Belanja hari ini melebihi batas harian! (Rp {totalSpending.toLocaleString()} dari batas Rp {batasHarian.toLocaleString()})
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {/* Shortcuts */}
       <section className="mb-6 animate-fade-in">
         <div className="grid grid-cols-3 gap-3 mt-2">
@@ -136,7 +152,9 @@ const Beranda = () => {
               ))}
               <li className="flex justify-between pt-2 border-t mt-2">
                 <span className="font-medium">Total</span>
-                <span className="font-medium">Rp {shoppingList.reduce((sum, item) => sum + item.price, 0).toLocaleString()}</span>
+                <span className={`font-medium ${isOverBudget ? 'text-red-600' : ''}`}>
+                  Rp {totalSpending.toLocaleString()}
+                </span>
               </li>
             </ul>
           </CardContent>
