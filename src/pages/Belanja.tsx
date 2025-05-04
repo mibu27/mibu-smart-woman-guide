@@ -1,0 +1,210 @@
+
+import React, { useState, useEffect } from 'react';
+import { Wallet, AlertTriangle } from 'lucide-react';
+import MainLayout from '@/components/MainLayout';
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+
+const Belanja = () => {
+  const [gajiBulanan, setGajiBulanan] = useState<number>(0);
+  const [belanjaWajib, setBelanjaWajib] = useState<number>(0);
+  const [batasHarian, setBatasHarian] = useState<number>(0);
+  
+  const [shoppingItems, setShoppingItems] = useState<{
+    id: number;
+    name: string;
+    price: number;
+  }[]>([
+    { id: 1, name: "Beras 5kg", price: 70000 },
+    { id: 2, name: "Sayur dan Buah", price: 50000 },
+    { id: 3, name: "Daging Ayam 1kg", price: 45000 }
+  ]);
+  
+  const [newItem, setNewItem] = useState({ name: "", price: "" });
+  
+  // Calculate daily spending limit
+  useEffect(() => {
+    if (gajiBulanan > 0 && belanjaWajib >= 0) {
+      const currentDate = new Date();
+      const daysInMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate();
+      
+      const dailyLimit = (gajiBulanan - belanjaWajib) / daysInMonth;
+      setBatasHarian(Math.max(0, dailyLimit));
+    }
+  }, [gajiBulanan, belanjaWajib]);
+  
+  const handleAddItem = () => {
+    if (!newItem.name || !newItem.price) {
+      toast.error("Mohon isi nama dan harga barang");
+      return;
+    }
+    
+    const price = parseFloat(newItem.price);
+    if (isNaN(price) || price <= 0) {
+      toast.error("Harga harus berupa angka positif");
+      return;
+    }
+    
+    const newItemObj = {
+      id: Date.now(),
+      name: newItem.name,
+      price: price
+    };
+    
+    setShoppingItems([...shoppingItems, newItemObj]);
+    setNewItem({ name: "", price: "" });
+    
+    const totalSpending = [...shoppingItems, newItemObj].reduce(
+      (sum, item) => sum + item.price, 0
+    );
+    
+    if (batasHarian > 0 && totalSpending > batasHarian) {
+      toast.warning("Peringatan: Belanja hari ini melebihi batas harian!");
+    }
+  };
+  
+  const handleRemoveItem = (id: number) => {
+    setShoppingItems(shoppingItems.filter(item => item.id !== id));
+  };
+  
+  const totalSpending = shoppingItems.reduce(
+    (sum, item) => sum + item.price, 0
+  );
+  
+  const handleSaveIncome = () => {
+    if (gajiBulanan <= 0) {
+      toast.error("Gaji bulanan harus lebih dari 0");
+      return;
+    }
+    
+    if (belanjaWajib < 0) {
+      toast.error("Belanja wajib tidak boleh negatif");
+      return;
+    }
+    
+    toast.success("Pengaturan gaji berhasil disimpan");
+  };
+  
+  return (
+    <MainLayout title="Belanja">
+      <div className="space-y-6">
+        <section className="animate-fade-in">
+          <h2 className="text-lg font-medium mb-3">Set Gaji</h2>
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <div>
+                <Label htmlFor="gaji-bulanan">Gaji Bulanan (Rp)</Label>
+                <Input
+                  id="gaji-bulanan"
+                  type="number"
+                  value={gajiBulanan || ""}
+                  onChange={(e) => setGajiBulanan(parseFloat(e.target.value) || 0)}
+                  placeholder="Masukkan gaji bulanan"
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="belanja-wajib">Belanja Wajib Bulanan (Rp)</Label>
+                <Input
+                  id="belanja-wajib"
+                  type="number"
+                  value={belanjaWajib || ""}
+                  onChange={(e) => setBelanjaWajib(parseFloat(e.target.value) || 0)}
+                  placeholder="Masukkan total belanja wajib"
+                  className="mt-1"
+                />
+              </div>
+              
+              <div className="flex justify-end">
+                <Button onClick={handleSaveIncome}>Simpan</Button>
+              </div>
+              
+              <div className="mt-4 p-3 bg-mibu-lightgray rounded-lg">
+                <div className="font-medium">Batas Belanja Harian</div>
+                <div className="text-xl font-bold text-mibu-purple mt-1">
+                  Rp {batasHarian.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+        
+        <section>
+          <h2 className="text-lg font-medium mb-3">Set Belanja Hari Ini</h2>
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label htmlFor="item-name">Nama Barang</Label>
+                  <Input
+                    id="item-name"
+                    value={newItem.name}
+                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                    placeholder="Nama barang"
+                    className="mt-1"
+                  />
+                </div>
+                <div className="w-1/3">
+                  <Label htmlFor="item-price">Harga (Rp)</Label>
+                  <Input
+                    id="item-price"
+                    value={newItem.price}
+                    onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+                    placeholder="Harga"
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={handleAddItem} className="mt-1">Tambah</Button>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <ul className="space-y-2">
+                  {shoppingItems.map((item) => (
+                    <li key={item.id} className="flex justify-between items-center">
+                      <span>{item.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          Rp {item.price.toLocaleString('id-ID')}
+                        </span>
+                        <button 
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="border-t pt-3 mt-3 flex justify-between font-medium">
+                <span>Total Belanja</span>
+                <span>Rp {totalSpending.toLocaleString('id-ID')}</span>
+              </div>
+              
+              {batasHarian > 0 && totalSpending > batasHarian && (
+                <div className="flex items-center p-2 bg-red-50 text-red-800 rounded-md border border-red-200">
+                  <AlertTriangle size={20} className="mr-2" />
+                  <span className="text-sm">Belanja hari ini melebihi batas harian!</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </MainLayout>
+  );
+};
+
+export default Belanja;
