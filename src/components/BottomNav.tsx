@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, ShoppingCart, Calendar, BarChart, Journal, Users, Settings } from 'lucide-react';
+import { Home, ShoppingCart, Calendar, BarChart, BookOpen, Users, Settings } from 'lucide-react';
 
 const BottomNav = () => {
   const location = useLocation();
@@ -34,7 +34,7 @@ const BottomNav = () => {
       </Link>
       
       <Link to="/diaryku" className="flex flex-col items-center justify-center p-2">
-        <Journal size={24} className={isActive('/diaryku')} />
+        <BookOpen size={24} className={isActive('/diaryku')} />
         <span className={`text-xs mt-1 ${isActive('/diaryku')}`}>Diaryku</span>
       </Link>
       

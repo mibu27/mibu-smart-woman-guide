@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { 
-  Wallet, ShoppingBag, Calendar, Heart, Journal, Users 
+  Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users 
 } from 'lucide-react';
 
 const shortcuts = [
@@ -29,7 +29,7 @@ const shortcuts = [
     to: "/diaryku/selfcare"
   },
   {
-    icon: <Journal size={28} className="text-mibu-purple mb-1" />,
+    icon: <BookOpen size={28} className="text-mibu-purple mb-1" />,
     label: "Diaryku",
     to: "/diaryku"
   },
