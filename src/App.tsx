@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import Index from "./pages/Index";
 import Beranda from "./pages/Beranda";
 import Belanja from "./pages/Belanja";
+import BelanjaGaji from "./pages/BelanjaGaji";
 import Jadwal from "./pages/Jadwal";
 import Laporan from "./pages/Laporan";
 import DiaryKu from "./pages/DiaryKu";
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/beranda" element={<Beranda />} />
           <Route path="/belanja" element={<Belanja />} />
+          <Route path="/belanja/gaji" element={<BelanjaGaji />} />
           <Route path="/jadwal" element={<Jadwal />} />
           <Route path="/laporan" element={<Laporan />} />
           <Route path="/diaryku" element={<DiaryKu />} />

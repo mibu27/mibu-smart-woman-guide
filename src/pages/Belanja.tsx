@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wallet, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Wallet, AlertTriangle, BadgeDollarSign } from 'lucide-react';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 
 const Belanja = () => {
@@ -95,6 +97,11 @@ const Belanja = () => {
     toast.success("Pengaturan gaji berhasil disimpan");
   };
   
+  // Calculate budget percentage used
+  const budgetPercentageUsed = batasHarian > 0 
+    ? Math.min((totalSpending / batasHarian) * 100, 100) 
+    : 0;
+  
   return (
     <MainLayout title="Belanja">
       <div className="space-y-6">
@@ -136,7 +143,13 @@ const Belanja = () => {
                 />
               </div>
               
-              <div className="flex justify-end">
+              <div className="flex justify-between">
+                <Link to="/belanja/gaji">
+                  <Button variant="outline" className="text-mibu-purple border-mibu-purple">
+                    <BadgeDollarSign size={18} className="mr-2" />
+                    Atur Detail Belanja Wajib
+                  </Button>
+                </Link>
                 <Button onClick={handleSaveIncome}>Simpan</Button>
               </div>
               
@@ -144,6 +157,14 @@ const Belanja = () => {
                 <div className="font-medium">Batas Belanja Harian</div>
                 <div className="text-xl font-bold text-mibu-purple mt-1">
                   Rp {batasHarian.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                </div>
+                <div className="flex flex-col gap-1 mt-2">
+                  <Progress value={budgetPercentageUsed} className="h-2" />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>0%</span>
+                    <span>{Math.round(budgetPercentageUsed)}% digunakan</span>
+                    <span>100%</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -212,6 +233,12 @@ const Belanja = () => {
                 <div className="flex items-center p-2 bg-red-50 text-red-800 rounded-md border border-red-200">
                   <AlertTriangle size={20} className="mr-2" />
                   <span className="text-sm">Belanja hari ini melebihi batas harian!</span>
+                </div>
+              )}
+              
+              {!isOverBudget && totalSpending > 0 && (
+                <div className="flex items-center p-2 bg-green-50 text-green-800 rounded-md border border-green-200">
+                  <span className="text-sm">👏 Bagus! Belanja Anda masih dalam batas harian.</span>
                 </div>
               )}
             </CardContent>
