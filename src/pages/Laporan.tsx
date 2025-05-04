@@ -6,7 +6,8 @@ import {
   BarChart as BarChartIcon, 
   TrendingUp, 
   TrendingDown,
-  Calendar 
+  Calendar,
+  PiggyBank 
 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -59,6 +60,14 @@ const Laporan = () => {
   const actualSpending = spendingData.reduce((sum, item) => sum + item.value, 0);
   const savedAmount = targetBudget - actualSpending;
   const isSaved = savedAmount > 0;
+
+  // Format for displaying IDR
+  const formatIDR = (value: number): string => {
+    return value.toLocaleString('id-ID');
+  };
+  
+  // Calculate savings percentage
+  const savingsPercentage = isSaved ? Math.round((savedAmount / targetBudget) * 100) : 0;
   
   return (
     <MainLayout title="Laporan">
@@ -88,6 +97,27 @@ const Laporan = () => {
             </div>
           </div>
           
+          {/* Savings Card */}
+          <Card className="mb-5 border-2 border-green-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <PiggyBank size={28} className="text-green-500 mr-3" />
+                  <div>
+                    <div className="text-sm text-gray-500">Total Tabungan Anda</div>
+                    <div className="font-bold text-2xl text-green-600">
+                      Rp {formatIDR(savedAmount)}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-gray-500">Persentase Penghematan</div>
+                  <div className="text-xl font-bold text-green-600">{savingsPercentage}%</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
           {/* Status Card */}
           <Card className="mb-5">
             <CardContent className="p-4">
@@ -101,7 +131,7 @@ const Laporan = () => {
                 <div className={`flex items-center ${isSaved ? 'text-green-500' : 'text-red-500'}`}>
                   {isSaved ? <TrendingDown className="mr-1" /> : <TrendingUp className="mr-1" />}
                   <span className="font-bold">
-                    Rp {Math.abs(savedAmount).toLocaleString('id-ID')}
+                    Rp {formatIDR(Math.abs(savedAmount))}
                   </span>
                 </div>
               </div>
@@ -121,7 +151,7 @@ const Laporan = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
                     <YAxis />
-                    <Tooltip formatter={(value) => [`Rp ${value.toLocaleString('id-ID')}`, 'Pengeluaran']} />
+                    <Tooltip formatter={(value) => [`Rp ${formatIDR(value as number)}`, 'Pengeluaran']} />
                     <Bar dataKey="pengeluaran" fill="#9b87f5" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -150,7 +180,7 @@ const Laporan = () => {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => `Rp ${value.toLocaleString('id-ID')}`} />
+                    <Tooltip formatter={(value) => `Rp ${formatIDR(value as number)}`} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

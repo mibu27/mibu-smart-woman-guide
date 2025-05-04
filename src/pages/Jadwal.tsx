@@ -93,23 +93,6 @@ const Jadwal = () => {
       <div className="space-y-6">
         <section>
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-medium">Kalender</h2>
-          </div>
-          <Card>
-            <CardContent className="p-4 flex justify-center">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(date) => date && setDate(date)}
-                locale={idLocale}
-                className="rounded-md border w-full"
-              />
-            </CardContent>
-          </Card>
-        </section>
-        
-        <section>
-          <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-medium">To Do List</h2>
             <div className="text-sm text-mibu-purple">
               {format(date, "EEEE, d MMMM yyyy", { locale: idLocale })}
@@ -245,6 +228,23 @@ const Jadwal = () => {
                   </div>
                 )}
               </ul>
+            </CardContent>
+          </Card>
+        </section>
+        
+        <section>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-medium">Kalender</h2>
+          </div>
+          <Card>
+            <CardContent className="p-4 flex justify-center">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(date) => date && setDate(date)}
+                locale={idLocale}
+                className="rounded-md border w-full pointer-events-auto"
+              />
             </CardContent>
           </Card>
         </section>

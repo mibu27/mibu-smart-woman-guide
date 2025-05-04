@@ -16,6 +16,16 @@ const Belanja = () => {
   const [belanjaWajib, setBelanjaWajib] = useState<number>(0);
   const [batasHarian, setBatasHarian] = useState<number>(0);
   
+  // Format for displaying IDR
+  const formatIDR = (value: number): string => {
+    return value.toLocaleString('id-ID');
+  };
+  
+  // Parse IDR formatted string back to number
+  const parseIDR = (value: string): number => {
+    return Number(value.replace(/\./g, ''));
+  };
+  
   const [shoppingItems, setShoppingItems] = useState<{
     id: number;
     name: string;
@@ -49,7 +59,7 @@ const Belanja = () => {
       return;
     }
     
-    const price = parseFloat(newItem.price);
+    const price = parseFloat(newItem.price.replace(/\./g, '').replace(/,/g, '.'));
     if (isNaN(price) || price <= 0) {
       toast.error("Harga harus berupa angka positif");
       return;
@@ -102,6 +112,21 @@ const Belanja = () => {
     ? Math.min((totalSpending / batasHarian) * 100, 100) 
     : 0;
   
+  // Handle change for price input with IDR formatting
+  const handlePriceChange = (value: string) => {
+    // Remove non-numeric characters
+    const numericValue = value.replace(/\D/g, '');
+    
+    if (numericValue === '') {
+      setNewItem({...newItem, price: ''});
+      return;
+    }
+    
+    // Format as IDR
+    const formattedValue = parseInt(numericValue, 10).toLocaleString('id-ID');
+    setNewItem({...newItem, price: formattedValue});
+  };
+  
   return (
     <MainLayout title="Belanja">
       <div className="space-y-6">
@@ -110,7 +135,7 @@ const Belanja = () => {
           <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
             <AlertTriangle className="h-4 w-4 mr-2" />
             <AlertDescription>
-              Belanja hari ini melebihi batas harian! (Rp {totalSpending.toLocaleString()} dari batas Rp {batasHarian.toLocaleString()})
+              Belanja hari ini melebihi batas harian! (Rp {formatIDR(totalSpending)} dari batas Rp {formatIDR(batasHarian)})
             </AlertDescription>
           </Alert>
         )}
@@ -123,9 +148,12 @@ const Belanja = () => {
                 <Label htmlFor="gaji-bulanan">Gaji Bulanan (Rp)</Label>
                 <Input
                   id="gaji-bulanan"
-                  type="number"
-                  value={gajiBulanan || ""}
-                  onChange={(e) => setGajiBulanan(parseFloat(e.target.value) || 0)}
+                  type="text"
+                  value={gajiBulanan > 0 ? formatIDR(gajiBulanan) : ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setGajiBulanan(value ? parseInt(value, 10) : 0);
+                  }}
                   placeholder="Masukkan gaji bulanan"
                   className="mt-1"
                 />
@@ -135,9 +163,12 @@ const Belanja = () => {
                 <Label htmlFor="belanja-wajib">Belanja Wajib Bulanan (Rp)</Label>
                 <Input
                   id="belanja-wajib"
-                  type="number"
-                  value={belanjaWajib || ""}
-                  onChange={(e) => setBelanjaWajib(parseFloat(e.target.value) || 0)}
+                  type="text"
+                  value={belanjaWajib > 0 ? formatIDR(belanjaWajib) : ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setBelanjaWajib(value ? parseInt(value, 10) : 0);
+                  }}
                   placeholder="Masukkan total belanja wajib"
                   className="mt-1"
                 />
@@ -156,7 +187,7 @@ const Belanja = () => {
               <div className="mt-4 p-3 bg-mibu-lightgray rounded-lg">
                 <div className="font-medium">Batas Belanja Harian</div>
                 <div className="text-xl font-bold text-mibu-purple mt-1">
-                  Rp {batasHarian.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                  Rp {formatIDR(batasHarian)}
                 </div>
                 <div className="flex flex-col gap-1 mt-2">
                   <Progress value={budgetPercentageUsed} className="h-2" />
@@ -191,7 +222,7 @@ const Belanja = () => {
                   <Input
                     id="item-price"
                     value={newItem.price}
-                    onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+                    onChange={(e) => handlePriceChange(e.target.value)}
                     placeholder="Harga"
                     className="mt-1"
                   />
@@ -208,7 +239,7 @@ const Belanja = () => {
                       <span>{item.name}</span>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">
-                          Rp {item.price.toLocaleString('id-ID')}
+                          Rp {formatIDR(item.price)}
                         </span>
                         <button 
                           onClick={() => handleRemoveItem(item.id)}
@@ -225,7 +256,7 @@ const Belanja = () => {
               <div className="border-t pt-3 mt-3 flex justify-between font-medium">
                 <span>Total Belanja</span>
                 <span className={isOverBudget ? 'text-red-600' : ''}>
-                  Rp {totalSpending.toLocaleString('id-ID')}
+                  Rp {formatIDR(totalSpending)}
                 </span>
               </div>
               

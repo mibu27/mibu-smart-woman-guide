@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
@@ -72,7 +71,7 @@ const Beranda = () => {
         <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
           <AlertTriangle className="h-4 w-4 mr-2" />
           <AlertDescription>
-            Belanja hari ini melebihi batas harian! (Rp {totalSpending.toLocaleString()} dari batas Rp {batasHarian.toLocaleString()})
+            Belanja hari ini melebihi batas harian! (Rp {totalSpending.toLocaleString('id-ID')} dari batas Rp {batasHarian.toLocaleString('id-ID')})
           </AlertDescription>
         </Alert>
       )}
