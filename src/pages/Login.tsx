@@ -1,18 +1,21 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Facebook, Mail } from 'lucide-react';
+import { Facebook } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Login attempt:', { email, password });
     // Here we would integrate with Supabase authentication
+    // For demo purposes, we'll redirect to the home page
+    navigate('/');
   };
 
   return (
@@ -101,12 +104,14 @@ const Login = () => {
         </div>
         
         <div className="text-center">
-          <p className="text-mibu-gray">
-            Belum punya akun?{" "}
-            <Link to="/register" className="text-mibu-purple font-medium">
-              Daftar
-            </Link>
+          <p className="text-mibu-gray mb-3">
+            Belum punya akun?
           </p>
+          <Link to="/register">
+            <Button className="w-full py-5 text-lg bg-white text-mibu-purple border border-mibu-purple hover:bg-mibu-lightgray">
+              DAFTAR SEKARANG
+            </Button>
+          </Link>
         </div>
       </div>
     </div>

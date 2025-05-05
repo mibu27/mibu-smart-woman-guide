@@ -14,7 +14,7 @@ const shortcuts = [
   {
     icon: <Wallet size={20} className="text-mibu-purple mb-1" />,
     label: "Gajiku",
-    to: "/belanja/gaji"
+    to: "/belanja/gaji" // Make sure it points to the correct path
   },
   {
     icon: <ShoppingBag size={20} className="text-mibu-purple mb-1" />,
@@ -55,16 +55,13 @@ const importantEvents = [
   { id: 2, text: "Ulang tahun suami", location: "Rumah", date: new Date(new Date().setDate(new Date().getDate() + 5)) }
 ];
 
-const shoppingList = [
-  { id: 1, name: "Beras 5kg", price: 70000 },
-  { id: 2, name: "Sayur dan Buah", price: 50000 },
-  { id: 3, name: "Daging Ayam 1kg", price: 45000 }
-];
+// For demo, we'll make these empty by default
+const shoppingList = [];
 
-// For example only - In a real app, this would be from your state/context
-const totalSpending = shoppingList.reduce((sum, item) => sum + item.price, 0);
-const batasHarian = 150000; // Example value - would come from context/state
-const isOverBudget = totalSpending > batasHarian;
+// Since the shopping list is empty, the total is 0
+const totalSpending = 0;
+const batasHarian = 150000;
+const isOverBudget = false; // Since shopping list is empty, it's not over budget
 
 const Beranda = () => {
   const handleToggleTodo = (id) => {
@@ -158,20 +155,26 @@ const Beranda = () => {
         </div>
         <Card className="border-2">
           <CardContent className="p-4">
-            <ul className="space-y-2">
-              {shoppingList.map((item) => (
-                <li key={item.id} className="flex justify-between">
-                  <span>{item.name}</span>
-                  <span className="font-medium">Rp {item.price.toLocaleString()}</span>
+            {shoppingList.length > 0 ? (
+              <ul className="space-y-2">
+                {shoppingList.map((item) => (
+                  <li key={item.id} className="flex justify-between">
+                    <span>{item.name}</span>
+                    <span className="font-medium">Rp {item.price.toLocaleString()}</span>
+                  </li>
+                ))}
+                <li className="flex justify-between pt-2 border-t mt-2">
+                  <span className="font-medium">Total</span>
+                  <span className={`font-medium ${isOverBudget ? 'text-red-600' : ''}`}>
+                    Rp {totalSpending.toLocaleString()}
+                  </span>
                 </li>
-              ))}
-              <li className="flex justify-between pt-2 border-t mt-2">
-                <span className="font-medium">Total</span>
-                <span className={`font-medium ${isOverBudget ? 'text-red-600' : ''}`}>
-                  Rp {totalSpending.toLocaleString()}
-                </span>
-              </li>
-            </ul>
+              </ul>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                Belum ada daftar belanja
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>
