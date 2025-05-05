@@ -140,9 +140,9 @@ const Belanja = () => {
           </Alert>
         )}
         
-        <section className="animate-fade-in">
+        <section className="animate-fade-in border border-gray-200 rounded-lg p-4">
           <h2 className="text-lg font-medium mb-3">Set Gaji</h2>
-          <Card>
+          <Card className="border-2">
             <CardContent className="p-4 space-y-4">
               <div>
                 <Label htmlFor="gaji-bulanan">Gaji Bulanan (Rp)</Label>
@@ -181,10 +181,10 @@ const Belanja = () => {
                     Atur Detail Belanja Wajib
                   </Button>
                 </Link>
-                <Button onClick={handleSaveIncome}>Simpan</Button>
+                <Button onClick={handleSaveIncome} className="bg-mibu-purple hover:bg-mibu-darkpurple">Simpan</Button>
               </div>
               
-              <div className="mt-4 p-3 bg-mibu-lightgray rounded-lg">
+              <div className="mt-4 p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
                 <div className="font-medium">Batas Belanja Harian</div>
                 <div className="text-xl font-bold text-mibu-purple mt-1">
                   Rp {formatIDR(batasHarian)}
@@ -202,9 +202,9 @@ const Belanja = () => {
           </Card>
         </section>
         
-        <section>
+        <section className="border border-gray-200 rounded-lg p-4">
           <h2 className="text-lg font-medium mb-3">Set Belanja Hari Ini</h2>
-          <Card>
+          <Card className="border-2">
             <CardContent className="p-4 space-y-4">
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -228,7 +228,7 @@ const Belanja = () => {
                   />
                 </div>
                 <div className="flex items-end">
-                  <Button onClick={handleAddItem} className="mt-1">Tambah</Button>
+                  <Button onClick={handleAddItem} className="mt-1 bg-mibu-purple hover:bg-mibu-darkpurple">Tambah</Button>
                 </div>
               </div>
               

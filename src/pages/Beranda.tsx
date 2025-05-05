@@ -1,40 +1,43 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
-  Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users, AlertTriangle
+  Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users, AlertTriangle, Check
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
 
 const shortcuts = [
   {
-    icon: <Wallet size={28} className="text-mibu-purple mb-1" />,
+    icon: <Wallet size={20} className="text-mibu-purple mb-1" />,
     label: "Gajiku",
     to: "/belanja/gaji"
   },
   {
-    icon: <ShoppingBag size={28} className="text-mibu-purple mb-1" />,
-    label: "Belanja",
+    icon: <ShoppingBag size={20} className="text-mibu-purple mb-1" />,
+    label: "BelanjaKu",
     to: "/belanja"
   },
   {
-    icon: <Calendar size={28} className="text-mibu-purple mb-1" />,
-    label: "Hari Ini",
+    icon: <Calendar size={20} className="text-mibu-purple mb-1" />,
+    label: "JadwalKu",
     to: "/jadwal"
   },
   {
-    icon: <Heart size={28} className="text-mibu-purple mb-1" />,
+    icon: <Heart size={20} className="text-mibu-purple mb-1" />,
     label: "Selfcare",
     to: "/diaryku/selfcare"
   },
   {
-    icon: <BookOpen size={28} className="text-mibu-purple mb-1" />,
+    icon: <BookOpen size={20} className="text-mibu-purple mb-1" />,
     label: "Diaryku",
     to: "/diaryku"
   },
   {
-    icon: <Users size={28} className="text-mibu-purple mb-1" />,
+    icon: <Users size={20} className="text-mibu-purple mb-1" />,
     label: "Komuniku",
     to: "/komunitas"
   }
@@ -48,8 +51,8 @@ const todoItems = [
 ];
 
 const importantEvents = [
-  { id: 1, text: "Pengajian ibu-ibu 19:30", location: "Masjid Al-Ikhlas" },
-  { id: 2, text: "Ulang tahun suami", location: "Rumah" }
+  { id: 1, text: "Pengajian ibu-ibu 19:30", location: "Masjid Al-Ikhlas", date: new Date() },
+  { id: 2, text: "Ulang tahun suami", location: "Rumah", date: new Date(new Date().setDate(new Date().getDate() + 5)) }
 ];
 
 const shoppingList = [
@@ -64,6 +67,11 @@ const batasHarian = 150000; // Example value - would come from context/state
 const isOverBudget = totalSpending > batasHarian;
 
 const Beranda = () => {
+  const handleToggleTodo = (id) => {
+    // In a real app, this would update state/context
+    console.log("Toggled todo with id:", id);
+  };
+
   return (
     <MainLayout title="Beranda">
       {/* Budget Alert */}
@@ -77,13 +85,13 @@ const Beranda = () => {
       )}
       
       {/* Shortcuts */}
-      <section className="mb-6 animate-fade-in">
+      <section className="mb-6 animate-fade-in border border-gray-200 rounded-lg p-3">
         <div className="grid grid-cols-3 gap-3 mt-2">
           {shortcuts.map((item, index) => (
             <Link 
               key={index} 
               to={item.to}
-              className="mibu-shortcut"
+              className="mibu-shortcut border border-gray-200"
             >
               {item.icon}
               <span className="text-sm mt-1">{item.label}</span>
@@ -93,17 +101,22 @@ const Beranda = () => {
       </section>
 
       {/* To Do List */}
-      <section className="mb-6">
+      <section className="mb-6 border border-gray-200 rounded-lg p-3">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-medium">To Do List Hari Ini</h2>
           <Link to="/jadwal" className="text-sm text-mibu-purple">Lihat Semua</Link>
         </div>
-        <Card>
+        <Card className="border-2">
           <CardContent className="p-4">
             <ul className="space-y-2">
               {todoItems.map((item) => (
                 <li key={item.id} className="flex items-start gap-3">
-                  <div className={`mt-1 w-4 h-4 rounded-full border ${item.completed ? 'bg-mibu-purple border-mibu-purple' : 'border-gray-300'}`}></div>
+                  <div 
+                    onClick={() => handleToggleTodo(item.id)}
+                    className={`mt-1 w-4 h-4 rounded-full flex items-center justify-center cursor-pointer border ${item.completed ? 'bg-mibu-purple border-mibu-purple' : 'border-gray-300'}`}
+                  >
+                    {item.completed && <Check size={12} className="text-white" />}
+                  </div>
                   <span className={item.completed ? 'line-through text-gray-400' : ''}>
                     {item.text}
                   </span>
@@ -115,18 +128,21 @@ const Beranda = () => {
       </section>
 
       {/* Important Events */}
-      <section className="mb-6">
+      <section className="mb-6 border border-gray-200 rounded-lg p-3">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-medium">Kegiatan Penting</h2>
+          <h2 className="text-lg font-medium">Acara Penting</h2>
           <Link to="/jadwal" className="text-sm text-mibu-purple">Lihat Semua</Link>
         </div>
-        <Card>
+        <Card className="border-2">
           <CardContent className="p-4">
             <ul className="space-y-3">
               {importantEvents.map((event) => (
                 <li key={event.id} className="p-2 bg-mibu-lightgray rounded-lg">
                   <div className="font-medium">{event.text}</div>
                   <div className="text-sm text-mibu-gray">{event.location}</div>
+                  <div className="text-sm text-mibu-purple mt-1">
+                    {format(event.date, "EEEE, d MMMM yyyy", { locale: idLocale })}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -135,12 +151,12 @@ const Beranda = () => {
       </section>
 
       {/* Shopping List */}
-      <section className="mb-6">
+      <section className="mb-6 border border-gray-200 rounded-lg p-3">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-medium">Daftar Belanja</h2>
           <Link to="/belanja" className="text-sm text-mibu-purple">Lihat Semua</Link>
         </div>
-        <Card>
+        <Card className="border-2">
           <CardContent className="p-4">
             <ul className="space-y-2">
               {shoppingList.map((item) => (

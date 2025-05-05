@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, ShoppingCart, Calendar, BarChart, BookOpen, Users, Settings } from 'lucide-react';
+import { Home, ShoppingCart, Calendar, BarChart } from 'lucide-react';
 
 const BottomNav = () => {
   const location = useLocation();
@@ -20,27 +20,17 @@ const BottomNav = () => {
       
       <Link to="/belanja" className="flex flex-col items-center justify-center p-2">
         <ShoppingCart size={24} className={isActive('/belanja')} />
-        <span className={`text-xs mt-1 ${isActive('/belanja')}`}>Belanja</span>
+        <span className={`text-xs mt-1 ${isActive('/belanja')}`}>BelanjaKu</span>
       </Link>
       
       <Link to="/jadwal" className="flex flex-col items-center justify-center p-2">
         <Calendar size={24} className={isActive('/jadwal')} />
-        <span className={`text-xs mt-1 ${isActive('/jadwal')}`}>Jadwal</span>
+        <span className={`text-xs mt-1 ${isActive('/jadwal')}`}>JadwalKu</span>
       </Link>
       
       <Link to="/laporan" className="flex flex-col items-center justify-center p-2">
         <BarChart size={24} className={isActive('/laporan')} />
         <span className={`text-xs mt-1 ${isActive('/laporan')}`}>Laporan</span>
-      </Link>
-      
-      <Link to="/diaryku" className="flex flex-col items-center justify-center p-2">
-        <BookOpen size={24} className={isActive('/diaryku')} />
-        <span className={`text-xs mt-1 ${isActive('/diaryku')}`}>Diaryku</span>
-      </Link>
-      
-      <Link to="/komunitas" className="flex flex-col items-center justify-center p-2">
-        <Users size={24} className={isActive('/komunitas')} />
-        <span className={`text-xs mt-1 ${isActive('/komunitas')}`}>Komunitas</span>
       </Link>
     </div>
   );

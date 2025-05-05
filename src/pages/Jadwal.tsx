@@ -87,18 +87,40 @@ const Jadwal = () => {
       event.id === id ? { ...event, date } : event
     ));
   };
+
+  // Function to check if a date has events
+  const hasEvents = (day: Date) => {
+    return importantEvents.some(event => 
+      event.date.getDate() === day.getDate() &&
+      event.date.getMonth() === day.getMonth() &&
+      event.date.getFullYear() === day.getFullYear()
+    );
+  };
+  
+  // Custom day rendering to add event indicators
+  const renderDay = (day: Date) => {
+    const hasEventOnDay = hasEvents(day);
+    return (
+      <div className="relative flex items-center justify-center w-full h-full">
+        <div>{day.getDate()}</div>
+        {hasEventOnDay && (
+          <div className="absolute w-1.5 h-1.5 bg-mibu-purple rounded-full bottom-1"></div>
+        )}
+      </div>
+    );
+  };
   
   return (
     <MainLayout title="Jadwal">
       <div className="space-y-6">
-        <section>
+        <section className="border border-gray-200 rounded-lg p-4">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-medium">To Do List</h2>
             <div className="text-sm text-mibu-purple">
               {format(date, "EEEE, d MMMM yyyy", { locale: idLocale })}
             </div>
           </div>
-          <Card>
+          <Card className="border-2">
             <CardContent className="p-4 space-y-4">
               <div className="flex gap-2">
                 <Input 
@@ -112,7 +134,7 @@ const Jadwal = () => {
                     }
                   }}
                 />
-                <Button onClick={handleAddTodo}>Tambah</Button>
+                <Button onClick={handleAddTodo} className="bg-mibu-purple hover:bg-mibu-darkpurple">Tambah</Button>
               </div>
               
               <ul className="space-y-2">
@@ -145,17 +167,17 @@ const Jadwal = () => {
           </Card>
         </section>
         
-        <section>
+        <section className="border border-gray-200 rounded-lg p-4">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-medium">Kegiatan Penting</h2>
+            <h2 className="text-lg font-medium">Acara Penting</h2>
           </div>
-          <Card>
+          <Card className="border-2">
             <CardContent className="p-4 space-y-4">
               <div className="space-y-3">
                 <Input 
                   value={newEvent.text} 
                   onChange={(e) => setNewEvent({...newEvent, text: e.target.value})}
-                  placeholder="Judul kegiatan" 
+                  placeholder="Judul acara" 
                 />
                 <Input 
                   value={newEvent.location} 
@@ -182,13 +204,13 @@ const Jadwal = () => {
                   </Popover>
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={handleAddEvent}>Tambah Kegiatan</Button>
+                  <Button onClick={handleAddEvent} className="bg-mibu-purple hover:bg-mibu-darkpurple">Tambah Acara</Button>
                 </div>
               </div>
               
               <ul className="space-y-3">
                 {importantEvents.map((event) => (
-                  <li key={event.id} className="p-3 bg-mibu-lightgray rounded-lg">
+                  <li key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
                     <div className="flex justify-between">
                       <div className="font-medium">{event.text}</div>
                       <button 
@@ -224,7 +246,7 @@ const Jadwal = () => {
                 ))}
                 {importantEvents.length === 0 && (
                   <div className="text-center py-2 text-gray-500">
-                    Tidak ada kegiatan penting
+                    Tidak ada acara penting
                   </div>
                 )}
               </ul>
@@ -232,17 +254,24 @@ const Jadwal = () => {
           </Card>
         </section>
         
-        <section>
+        <section className="border border-gray-200 rounded-lg p-4">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-medium">Kalender</h2>
           </div>
-          <Card>
+          <Card className="border-2">
             <CardContent className="p-4 flex justify-center">
               <Calendar
                 mode="single"
                 selected={date}
                 onSelect={(date) => date && setDate(date)}
                 locale={idLocale}
+                components={{
+                  Day: ({ date, ...props }) => (
+                    <button {...props}>
+                      {renderDay(date)}
+                    </button>
+                  ),
+                }}
                 className="rounded-md border w-full pointer-events-auto"
               />
             </CardContent>
