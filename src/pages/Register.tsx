@@ -1,19 +1,31 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Facebook } from 'lucide-react';
+import { toast } from "@/components/ui/sonner";
 
 const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
   
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Register attempt:', { name, email, password });
     // Here we would integrate with Supabase authentication
+    
+    // Show success notification
+    toast.success('Pendaftaran berhasil!', {
+      description: 'Silahkan masuk dengan akun yang baru dibuat.',
+    });
+    
+    // Redirect to login page after successful registration
+    setTimeout(() => {
+      navigate('/login');
+    }, 1500);
   };
 
   return (

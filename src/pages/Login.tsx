@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Facebook } from 'lucide-react';
+import { toast } from "@/components/ui/sonner";
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,8 +15,16 @@ const Login = () => {
     e.preventDefault();
     console.log('Login attempt:', { email, password });
     // Here we would integrate with Supabase authentication
+    
+    // Show success notification
+    toast.success('Login berhasil!', {
+      description: 'Selamat datang kembali!'
+    });
+    
     // For demo purposes, we'll redirect to the home page
-    navigate('/');
+    setTimeout(() => {
+      navigate('/');
+    }, 1500);
   };
 
   return (
