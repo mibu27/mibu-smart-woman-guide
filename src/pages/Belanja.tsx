@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, AlertTriangle, BadgeDollarSign } from 'lucide-react';
+import { Wallet, AlertTriangle, BadgeDollarSign, Save } from 'lucide-react';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Belanja = () => {
   const [gajiBulanan, setGajiBulanan] = useState<number>(0);
   const [belanjaWajib, setBelanjaWajib] = useState<number>(0);
   const [batasHarian, setBatasHarian] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
   
   // Format for displaying IDR
   const formatIDR = (value: number): string => {
@@ -37,6 +39,39 @@ const Belanja = () => {
   ]);
   
   const [newItem, setNewItem] = useState({ name: "", price: "" });
+  
+  // Fetch user's budget settings on component mount
+  useEffect(() => {
+    const fetchBudgetSettings = async () => {
+      try {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data, error } = await supabase
+            .from('budget_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+            throw error;
+          }
+          
+          if (data) {
+            setGajiBulanan(data.monthly_salary);
+            setBelanjaWajib(data.fixed_expenses || 0);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching budget settings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchBudgetSettings();
+  }, []);
   
   // Calculate daily spending limit
   useEffect(() => {
@@ -93,7 +128,7 @@ const Belanja = () => {
   
   const isOverBudget = batasHarian > 0 && totalSpending > batasHarian;
   
-  const handleSaveIncome = () => {
+  const handleSaveIncome = async () => {
     if (gajiBulanan <= 0) {
       toast.error("Gaji bulanan harus lebih dari 0");
       return;
@@ -104,7 +139,55 @@ const Belanja = () => {
       return;
     }
     
-    toast.success("Pengaturan gaji berhasil disimpan");
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Silakan login terlebih dahulu");
+        return;
+      }
+      
+      // Check if record exists
+      const { data: existingData } = await supabase
+        .from('budget_settings')
+        .select('id')
+        .eq('user_id', user.id);
+      
+      let result;
+      
+      if (existingData && existingData.length > 0) {
+        // Update existing record
+        result = await supabase
+          .from('budget_settings')
+          .update({
+            monthly_salary: gajiBulanan,
+            fixed_expenses: belanjaWajib,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+      } else {
+        // Insert new record
+        result = await supabase
+          .from('budget_settings')
+          .insert({
+            user_id: user.id,
+            monthly_salary: gajiBulanan,
+            fixed_expenses: belanjaWajib
+          });
+      }
+      
+      if (result.error) {
+        throw result.error;
+      }
+      
+      toast.success("Pengaturan gaji berhasil disimpan");
+    } catch (error) {
+      console.error('Error saving budget settings:', error);
+      toast.error("Gagal menyimpan pengaturan gaji");
+    } finally {
+      setLoading(false);
+    }
   };
   
   // Calculate budget percentage used
@@ -181,7 +264,14 @@ const Belanja = () => {
                     Atur Detail Belanja Wajib
                   </Button>
                 </Link>
-                <Button onClick={handleSaveIncome} className="bg-mibu-purple hover:bg-mibu-darkpurple">Simpan</Button>
+                <Button 
+                  onClick={handleSaveIncome} 
+                  className="bg-mibu-purple hover:bg-mibu-darkpurple"
+                  disabled={loading}
+                >
+                  <Save size={18} className="mr-2" />
+                  {loading ? 'Menyimpan...' : 'Simpan'}
+                </Button>
               </div>
               
               <div className="mt-4 p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
