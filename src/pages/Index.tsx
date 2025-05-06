@@ -2,17 +2,20 @@
 import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import Beranda from './Beranda';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
-  // In a real app with authentication, we would check if user is logged in here
-  // For demo purposes, we'll assume user is NOT logged in
-  const isLoggedIn = false; 
+  const { user, loading } = useAuth();
   
-  if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
   
-  return <Beranda />;
+  if (user) {
+    return <Navigate to="/beranda" replace />;
+  }
+  
+  return <Navigate to="/login" replace />;
 };
 
 export default Index;

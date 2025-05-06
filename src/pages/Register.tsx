@@ -1,31 +1,56 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Facebook } from 'lucide-react';
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from '@/contexts/AuthContext';
 
 const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signUp, user } = useAuth();
   
-  const handleRegister = (e: React.FormEvent) => {
+  // Redirect already logged in users
+  useEffect(() => {
+    if (user) {
+      navigate('/beranda');
+    }
+  }, [user, navigate]);
+  
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Register attempt:', { name, email, password });
-    // Here we would integrate with Supabase authentication
+    setLoading(true);
     
-    // Show success notification
-    toast.success('Pendaftaran berhasil!', {
-      description: 'Silahkan masuk dengan akun yang baru dibuat.',
-    });
-    
-    // Redirect to login page after successful registration
-    setTimeout(() => {
-      navigate('/login');
-    }, 1500);
+    try {
+      const { error, success } = await signUp(email, password, name);
+      
+      if (success) {
+        toast.success('Pendaftaran berhasil!', {
+          description: 'Silahkan login dengan akun yang baru dibuat.'
+        });
+        
+        // In real app with email verification we would stay on this page
+        // But for this demo, we'll redirect to login
+        setTimeout(() => {
+          navigate('/beranda'); 
+        }, 1000);
+      } else if (error) {
+        toast.error('Pendaftaran gagal!', {
+          description: error.message
+        });
+      }
+    } catch (error: any) {
+      toast.error('Pendaftaran gagal!', {
+        description: error.message
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,8 +108,12 @@ const Register = () => {
               />
             </div>
             
-            <Button type="submit" className="w-full py-6 text-lg bg-mibu-purple hover:bg-mibu-darkpurple">
-              DAFTAR
+            <Button 
+              type="submit" 
+              className="w-full py-6 text-lg bg-mibu-purple hover:bg-mibu-darkpurple"
+              disabled={loading}
+            >
+              {loading ? 'LOADING...' : 'DAFTAR'}
             </Button>
           </form>
           

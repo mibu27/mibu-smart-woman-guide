@@ -1,30 +1,49 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Facebook } from 'lucide-react';
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signIn, user } = useAuth();
   
-  const handleLogin = (e: React.FormEvent) => {
+  // Redirect already logged in users
+  useEffect(() => {
+    if (user) {
+      navigate('/beranda');
+    }
+  }, [user, navigate]);
+  
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password });
-    // Here we would integrate with Supabase authentication
+    setLoading(true);
     
-    // Show success notification
-    toast.success('Login berhasil!', {
-      description: 'Selamat datang kembali!'
-    });
-    
-    // For demo purposes, we'll redirect to the home page
-    setTimeout(() => {
-      navigate('/');
-    }, 1500);
+    try {
+      const { error, success } = await signIn(email, password);
+      
+      if (success) {
+        toast.success('Login berhasil!', {
+          description: 'Selamat datang kembali!'
+        });
+      } else if (error) {
+        toast.error('Login gagal!', {
+          description: error.message
+        });
+      }
+    } catch (error: any) {
+      toast.error('Login gagal!', {
+        description: error.message
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -70,8 +89,12 @@ const Login = () => {
               </Link>
             </div>
             
-            <Button type="submit" className="w-full py-6 text-lg bg-mibu-purple hover:bg-mibu-darkpurple">
-              MASUK
+            <Button 
+              type="submit" 
+              className="w-full py-6 text-lg bg-mibu-purple hover:bg-mibu-darkpurple"
+              disabled={loading}
+            >
+              {loading ? 'LOADING...' : 'MASUK'}
             </Button>
           </form>
           
