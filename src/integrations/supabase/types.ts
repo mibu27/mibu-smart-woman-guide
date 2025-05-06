@@ -42,6 +42,7 @@ export type Database = {
       budget_settings: {
         Row: {
           created_at: string
+          fixed_expenses: number | null
           id: string
           monthly_salary: number
           updated_at: string
@@ -49,6 +50,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          fixed_expenses?: number | null
           id?: string
           monthly_salary?: number
           updated_at?: string
@@ -56,6 +58,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          fixed_expenses?: number | null
           id?: string
           monthly_salary?: number
           updated_at?: string

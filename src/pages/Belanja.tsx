@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Wallet, AlertTriangle, BadgeDollarSign, Save } from 'lucide-react';
@@ -60,7 +59,8 @@ const Belanja = () => {
           
           if (data) {
             setGajiBulanan(data.monthly_salary);
-            setBelanjaWajib(data.fixed_expenses || 0);
+            // Use nullish coalescing operator to handle potential null or undefined values
+            setBelanjaWajib(data.fixed_expenses ?? 0);
           }
         }
       } catch (error) {
@@ -237,7 +237,6 @@ const Belanja = () => {
                     const value = e.target.value.replace(/\D/g, '');
                     setGajiBulanan(value ? parseInt(value, 10) : 0);
                   }}
-                  placeholder="Masukkan gaji bulanan"
                   className="mt-1"
                 />
               </div>
@@ -252,7 +251,6 @@ const Belanja = () => {
                     const value = e.target.value.replace(/\D/g, '');
                     setBelanjaWajib(value ? parseInt(value, 10) : 0);
                   }}
-                  placeholder="Masukkan total belanja wajib"
                   className="mt-1"
                 />
               </div>
