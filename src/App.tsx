@@ -17,6 +17,7 @@ import Komunitas from "./pages/Komunitas";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { ToastProvider } from "./hooks/use-toast";
 
 const queryClient = new QueryClient();
 
@@ -25,22 +26,24 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/beranda" element={<ProtectedRoute><Beranda /></ProtectedRoute>} />
-            <Route path="/belanja" element={<ProtectedRoute><Belanja /></ProtectedRoute>} />
-            <Route path="/belanja/gaji" element={<ProtectedRoute><BelanjaGaji /></ProtectedRoute>} />
-            <Route path="/jadwal" element={<ProtectedRoute><Jadwal /></ProtectedRoute>} />
-            <Route path="/laporan" element={<ProtectedRoute><Laporan /></ProtectedRoute>} />
-            <Route path="/diaryku" element={<ProtectedRoute><DiaryKu /></ProtectedRoute>} />
-            <Route path="/diaryku/selfcare" element={<ProtectedRoute><DiaryKu /></ProtectedRoute>} />
-            <Route path="/komunitas" element={<ProtectedRoute><Komunitas /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ToastProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/" element={<Index />} />
+              <Route path="/beranda" element={<ProtectedRoute><Beranda /></ProtectedRoute>} />
+              <Route path="/belanja" element={<ProtectedRoute><Belanja /></ProtectedRoute>} />
+              <Route path="/belanja/gaji" element={<ProtectedRoute><BelanjaGaji /></ProtectedRoute>} />
+              <Route path="/jadwal" element={<ProtectedRoute><Jadwal /></ProtectedRoute>} />
+              <Route path="/laporan" element={<ProtectedRoute><Laporan /></ProtectedRoute>} />
+              <Route path="/diaryku" element={<ProtectedRoute><DiaryKu /></ProtectedRoute>} />
+              <Route path="/diaryku/selfcare" element={<ProtectedRoute><DiaryKu /></ProtectedRoute>} />
+              <Route path="/komunitas" element={<ProtectedRoute><Komunitas /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
