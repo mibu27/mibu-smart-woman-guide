@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Wallet, AlertTriangle, BadgeDollarSign, Save } from 'lucide-react';
@@ -224,7 +225,6 @@ const Belanja = () => {
         )}
         
         <section className="animate-fade-in border border-gray-200 rounded-lg p-4">
-          <h2 className="text-lg font-medium mb-3">Set Gaji</h2>
           <Card className="border-2">
             <CardContent className="p-4 space-y-4">
               <div>
