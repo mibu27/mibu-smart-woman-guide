@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,11 @@ import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 import Subscription from "./pages/Subscription";
 import PaymentMethods from "./pages/PaymentMethods";
+import Privacy from "./pages/Privacy";
+import Help from "./pages/Help";
+import Contact from "./pages/Contact";
+import About from "./pages/About";
+import SelfCare from "./pages/SelfCare";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ToastProvider } from "./hooks/use-toast";
@@ -49,6 +55,12 @@ function App() {
                 <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                 <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
                 <Route path="/payment-methods" element={<ProtectedRoute><PaymentMethods /></ProtectedRoute>} />
+                <Route path="/selfcare" element={<ProtectedRoute><SelfCare /></ProtectedRoute>} />
+                
+                <Route path="/privacy" element={<ProtectedRoute><Privacy /></ProtectedRoute>} />
+                <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+                <Route path="/contact" element={<ProtectedRoute><Contact /></ProtectedRoute>} />
+                <Route path="/about" element={<ProtectedRoute><About /></ProtectedRoute>} />
                 
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Settings, Bell, LogOut, X, User, CreditCard, HelpCircle, Crown, Heart, Home, ShoppingCart, Calendar, BarChart, Shield, Phone } from 'lucide-react';
+import { Settings, Bell, LogOut, X, User, CreditCard, HelpCircle, Crown, Heart, Home, ShoppingCart, Calendar, BarChart, Shield, Phone, Info } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -172,7 +172,8 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
             className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/about') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
             onClick={toggleSidebar}
           >
-            <span className="ml-6">Tentang MIBU</span>
+            <Info size={20} className="mr-3" />
+            <span>Tentang MIBU</span>
           </Link>
         </div>
         
