@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Settings, Bell, LogOut, X, User, CreditCard, HelpCircle, Crown, Heart, Home, ShoppingCart, Calendar, BarChart, Shield, Phone } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   const handleLogout = () => {
     // In a real app, we would clear authentication state here
@@ -19,6 +20,10 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
     setTimeout(() => {
       navigate("/login");
     }, 1000);
+  };
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
   
   return (
@@ -43,74 +48,130 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
         <div className="py-4 px-6 flex-grow overflow-auto">
           <div className="mb-4 border-b pb-4">
             <div className="text-xs text-gray-500 mb-1">NAVIGASI UTAMA</div>
-            <Link to="/" className="flex items-center py-2 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+            <Link 
+              to="/" 
+              className={`flex items-center py-2 hover:text-mibu-purple ${isActive('/') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+              onClick={toggleSidebar}
+            >
               <Home size={20} className="mr-3" />
               <span>Beranda</span>
             </Link>
-            <Link to="/belanja" className="flex items-center py-2 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+            <Link 
+              to="/belanja" 
+              className={`flex items-center py-2 hover:text-mibu-purple ${isActive('/belanja') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+              onClick={toggleSidebar}
+            >
               <ShoppingCart size={20} className="mr-3" />
               <span>BelanjaKu</span>
             </Link>
-            <Link to="/jadwal" className="flex items-center py-2 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+            <Link 
+              to="/jadwal" 
+              className={`flex items-center py-2 hover:text-mibu-purple ${isActive('/jadwal') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+              onClick={toggleSidebar}
+            >
               <Calendar size={20} className="mr-3" />
               <span>JadwalKu</span>
             </Link>
-            <Link to="/laporan" className="flex items-center py-2 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+            <Link 
+              to="/laporan" 
+              className={`flex items-center py-2 hover:text-mibu-purple ${isActive('/laporan') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+              onClick={toggleSidebar}
+            >
               <BarChart size={20} className="mr-3" />
               <span>Laporan</span>
             </Link>
           </div>
         
-          <Link to="/profile" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/profile" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/profile') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <User size={20} className="mr-3" />
             <span>Profil Saya</span>
           </Link>
           
-          <Link to="/settings" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/settings" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/settings') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <Settings size={20} className="mr-3" />
             <span>Pengaturan Akun</span>
           </Link>
           
-          <Link to="/notifications" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/notifications" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/notifications') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <Bell size={20} className="mr-3" />
             <span>Notifikasi</span>
           </Link>
           
           <div className="border-t my-4"></div>
           
-          <Link to="/subscription" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/subscription" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/subscription') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <Crown size={20} className="mr-3" />
             <span>Langganan Premium</span>
           </Link>
           
-          <Link to="/payment-methods" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/payment-methods" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/payment-methods') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <CreditCard size={20} className="mr-3" />
             <span>Metode Pembayaran</span>
           </Link>
           
-          <Link to="/selfcare" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/selfcare" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/selfcare') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <Heart size={20} className="mr-3" />
             <span>Self Care</span>
           </Link>
           
           <div className="border-t my-4"></div>
           
-          <Link to="/privacy" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/privacy" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/privacy') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <Shield size={20} className="mr-3" />
             <span>Privasi & Keamanan</span>
           </Link>
           
-          <Link to="/help" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/help" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/help') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <HelpCircle size={20} className="mr-3" />
             <span>Bantuan</span>
           </Link>
           
-          <Link to="/contact" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/contact" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/contact') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <Phone size={20} className="mr-3" />
             <span>Hubungi Kami</span>
           </Link>
           
-          <Link to="/about" className="flex items-center py-3 text-gray-700 hover:text-mibu-purple" onClick={toggleSidebar}>
+          <Link 
+            to="/about" 
+            className={`flex items-center py-3 hover:text-mibu-purple ${isActive('/about') ? 'text-mibu-purple font-medium' : 'text-gray-700'}`} 
+            onClick={toggleSidebar}
+          >
             <span className="ml-6">Tentang MIBU</span>
           </Link>
         </div>
