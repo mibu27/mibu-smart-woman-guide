@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Settings, Bell, LogOut, X, User, CreditCard, HelpCircle, Crown, Heart, Home, ShoppingCart, Calendar, BarChart, Shield, Phone, Info } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,13 +14,17 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signOut } = useAuth();
   
-  const handleLogout = () => {
-    // In a real app, we would clear authentication state here
-    toast.success("Berhasil keluar dari akun");
-    setTimeout(() => {
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Berhasil keluar dari akun");
       navigate("/login");
-    }, 1000);
+    } catch (error) {
+      console.error("Error during logout:", error);
+      toast.error("Gagal keluar dari akun");
+    }
   };
 
   const isActive = (path: string) => {
