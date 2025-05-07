@@ -60,7 +60,6 @@ const Belanja = () => {
           
           if (data) {
             setGajiBulanan(data.monthly_salary);
-            // Use nullish coalescing operator to handle potential null or undefined values
             setBelanjaWajib(data.fixed_expenses ?? 0);
           }
         }
@@ -130,65 +129,7 @@ const Belanja = () => {
   const isOverBudget = batasHarian > 0 && totalSpending > batasHarian;
   
   const handleSaveIncome = async () => {
-    if (gajiBulanan <= 0) {
-      toast.error("Gaji bulanan harus lebih dari 0");
-      return;
-    }
-    
-    if (belanjaWajib < 0) {
-      toast.error("Belanja wajib tidak boleh negatif");
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("Silakan login terlebih dahulu");
-        return;
-      }
-      
-      // Check if record exists
-      const { data: existingData } = await supabase
-        .from('budget_settings')
-        .select('id')
-        .eq('user_id', user.id);
-      
-      let result;
-      
-      if (existingData && existingData.length > 0) {
-        // Update existing record
-        result = await supabase
-          .from('budget_settings')
-          .update({
-            monthly_salary: gajiBulanan,
-            fixed_expenses: belanjaWajib,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-      } else {
-        // Insert new record
-        result = await supabase
-          .from('budget_settings')
-          .insert({
-            user_id: user.id,
-            monthly_salary: gajiBulanan,
-            fixed_expenses: belanjaWajib
-          });
-      }
-      
-      if (result.error) {
-        throw result.error;
-      }
-      
-      toast.success("Pengaturan gaji berhasil disimpan");
-    } catch (error) {
-      console.error('Error saving budget settings:', error);
-      toast.error("Gagal menyimpan pengaturan gaji");
-    } finally {
-      setLoading(false);
-    }
+    toast.info("Silakan ubah nilai gaji dan belanja wajib di halaman Pengaturan Gaji & Belanja Wajib");
   };
   
   // Calculate budget percentage used
@@ -233,11 +174,8 @@ const Belanja = () => {
                   id="gaji-bulanan"
                   type="text"
                   value={gajiBulanan > 0 ? formatIDR(gajiBulanan) : ""}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
-                    setGajiBulanan(value ? parseInt(value, 10) : 0);
-                  }}
-                  className="mt-1"
+                  disabled={true}
+                  className="mt-1 bg-gray-50"
                 />
               </div>
               
@@ -247,11 +185,8 @@ const Belanja = () => {
                   id="belanja-wajib"
                   type="text"
                   value={belanjaWajib > 0 ? formatIDR(belanjaWajib) : ""}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
-                    setBelanjaWajib(value ? parseInt(value, 10) : 0);
-                  }}
-                  className="mt-1"
+                  disabled={true}
+                  className="mt-1 bg-gray-50"
                 />
               </div>
               
@@ -262,14 +197,6 @@ const Belanja = () => {
                     Atur Detail Belanja Wajib
                   </Button>
                 </Link>
-                <Button 
-                  onClick={handleSaveIncome} 
-                  className="bg-mibu-purple hover:bg-mibu-darkpurple"
-                  disabled={loading}
-                >
-                  <Save size={18} className="mr-2" />
-                  {loading ? 'Menyimpan...' : 'Simpan'}
-                </Button>
               </div>
               
               <div className="mt-4 p-3 bg-mibu-lightgray rounded-lg border border-gray-200">

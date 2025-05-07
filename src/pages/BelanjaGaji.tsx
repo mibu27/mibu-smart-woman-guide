@@ -19,6 +19,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
 // Define form schema for mandatory expenses
 const mandatoryExpenseSchema = z.object({
@@ -35,6 +36,7 @@ const BelanjaGaji = () => {
   const [batasHarian, setBatasHarian] = useState<number>(0);
   const [savings, setSavings] = useState<number>(0);
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   
   // Sample data for mandatory expenses
   const [mandatoryExpenses, setMandatoryExpenses] = useState<{
@@ -57,6 +59,35 @@ const BelanjaGaji = () => {
     "Asuransi",
     "Lainnya"
   ];
+  
+  // Fetch budget settings from Supabase
+  useEffect(() => {
+    const fetchBudgetSettings = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data, error } = await supabase
+            .from('budget_settings')
+            .select('monthly_salary')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+            throw error;
+          }
+          
+          if (data) {
+            setGajiBulanan(data.monthly_salary);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching budget settings:', error);
+      }
+    };
+    
+    fetchBudgetSettings();
+  }, []);
   
   // Form for adding new mandatory expense
   const form = useForm<z.infer<typeof mandatoryExpenseSchema>>({
@@ -117,13 +148,92 @@ const BelanjaGaji = () => {
     toast.success("Pengeluaran wajib berhasil dihapus");
   };
   
-  const handleSaveIncome = () => {
+  const handleSaveIncome = async () => {
     if (gajiBulanan <= 0) {
       toast.error("Gaji bulanan harus lebih dari 0");
       return;
     }
     
-    toast.success("Pengaturan gaji berhasil disimpan");
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Silakan login terlebih dahulu");
+        return;
+      }
+      
+      // Check if record exists
+      const { data: existingData } = await supabase
+        .from('budget_settings')
+        .select('id')
+        .eq('user_id', user.id);
+      
+      let result;
+      
+      if (existingData && existingData.length > 0) {
+        // Update existing record
+        result = await supabase
+          .from('budget_settings')
+          .update({
+            monthly_salary: gajiBulanan,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+      } else {
+        // Insert new record
+        result = await supabase
+          .from('budget_settings')
+          .insert({
+            user_id: user.id,
+            monthly_salary: gajiBulanan
+          });
+      }
+      
+      if (result.error) {
+        throw result.error;
+      }
+      
+      toast.success("Gaji berhasil disimpan");
+    } catch (error) {
+      console.error('Error saving budget settings:', error);
+      toast.error("Gagal menyimpan gaji");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save all mandatory expenses and total to Supabase
+  const handleSaveAllExpenses = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Silakan login terlebih dahulu");
+        return;
+      }
+      
+      // Update fixed_expenses with the total mandatory expenses
+      const { error } = await supabase
+        .from('budget_settings')
+        .update({
+          fixed_expenses: totalBelanjaWajib,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast.success("Total belanja wajib berhasil disimpan");
+    } catch (error) {
+      console.error('Error saving fixed expenses:', error);
+      toast.error("Gagal menyimpan total belanja wajib");
+    } finally {
+      setLoading(false);
+    }
   };
   
   // Group expenses by category for better display
@@ -158,9 +268,9 @@ const BelanjaGaji = () => {
               </div>
               
               <div className="flex justify-end">
-                <Button onClick={handleSaveIncome}>
+                <Button onClick={handleSaveIncome} disabled={loading}>
                   <Save className="mr-2" size={18} />
-                  Simpan Gaji
+                  {loading ? "Menyimpan..." : "Simpan Gaji"}
                 </Button>
               </div>
             </CardContent>
@@ -286,6 +396,18 @@ const BelanjaGaji = () => {
                     <span className="text-mibu-purple">
                       Rp {totalBelanjaWajib.toLocaleString('id-ID')}
                     </span>
+                  </div>
+                  
+                  {/* New Save Button for Total Mandatory Expenses */}
+                  <div className="flex justify-end mt-4">
+                    <Button 
+                      onClick={handleSaveAllExpenses} 
+                      className="bg-mibu-purple hover:bg-mibu-darkpurple"
+                      disabled={loading}
+                    >
+                      <Save size={18} className="mr-2" />
+                      {loading ? "Menyimpan..." : "Simpan Total Belanja Wajib"}
+                    </Button>
                   </div>
                 </div>
               ) : (
