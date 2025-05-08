@@ -46,11 +46,31 @@ const shortcuts = [
   }
 ];
 
+// TypeScript interfaces for our data types
+interface TodoItem {
+  id: string; // Changed from number to string to match UUID from Supabase
+  text: string;
+  completed: boolean;
+}
+
+interface ImportantEvent {
+  id: string; // Changed from number to string
+  text: string;
+  location: string;
+  date: Date;
+}
+
+interface ShoppingItem {
+  id: string; // Changed from number to string
+  name: string;
+  price: number;
+}
+
 const Beranda = () => {
   const { user } = useAuth();
-  const [todoItems, setTodoItems] = useState<{id: number, text: string, completed: boolean}[]>([]);
-  const [importantEvents, setImportantEvents] = useState<{id: number, text: string, location: string, date: Date}[]>([]);
-  const [shoppingList, setShoppingList] = useState<{id: number, name: string, price: number}[]>([]);
+  const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
+  const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([]);
+  const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
   const [batasHarian, setBatasHarian] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -112,7 +132,7 @@ const Beranda = () => {
           setShoppingList(shoppingData.map(item => ({
             id: item.id,
             name: item.name,
-            price: parseFloat(item.price)
+            price: parseFloat(item.price.toString()) // Convert to number safely
           })));
         }
         
@@ -143,7 +163,7 @@ const Beranda = () => {
     fetchData();
   }, [user]);
 
-  const handleToggleTodo = async (id) => {
+  const handleToggleTodo = async (id: string) => {
     if (!user) return;
     
     try {
