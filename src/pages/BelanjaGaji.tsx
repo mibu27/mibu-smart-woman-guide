@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Save, Edit, BadgeDollarSign, TrendingUp } from 'lucide-react';
+import { Save, Edit, BadgeDollarSign, TrendingUp, Trash2, Plus } from 'lucide-react';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,79 +14,127 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
-// Define form schema for mandatory expenses - removed category field
+// Define form schema for mandatory expenses
 const mandatoryExpenseSchema = z.object({
   name: z.string().min(1, {
     message: "Nama pengeluaran harus diisi"
   }),
-  amount: z.string().refine(val => !isNaN(Number(val)) && Number(val) > 0, {
+  amount: z.string().refine(val => {
+    // Remove non-numeric characters for validation
+    const numericValue = val.replace(/\D/g, '');
+    return !isNaN(Number(numericValue)) && Number(numericValue) > 0;
+  }, {
     message: "Jumlah harus berupa angka positif"
   })
 });
 
 const BelanjaGaji = () => {
-  const [gajiBulanan, setGajiBulanan] = useState<number>(0);
+  const [gajiBulanan, setGajiBulanan] = useState<string>('');
   const [totalBelanjaWajib, setTotalBelanjaWajib] = useState<number>(0);
   const [batasHarian, setBatasHarian] = useState<number>(0);
   const [savings, setSavings] = useState<number>(0);
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<number | null>(null);
 
-  // Sample data for mandatory expenses
+  // Initialize with empty array instead of sample data
   const [mandatoryExpenses, setMandatoryExpenses] = useState<{
     id: number;
     name: string;
     amount: number;
     category: string;
-  }[]>([{
-    id: 1,
-    name: "Sewa Rumah",
-    amount: 1500000,
-    category: "Tempat Tinggal"
-  }, {
-    id: 2,
-    name: "Listrik & Air",
-    amount: 500000,
-    category: "Utilitas"
-  }, {
-    id: 3,
-    name: "Internet",
-    amount: 350000,
-    category: "Langganan"
-  }]);
-  const expenseCategories = ["Tempat Tinggal", "Utilitas", "Langganan", "Pendidikan", "Transportasi", "Asuransi", "Lainnya"];
+  }[]>([]);
 
-  // Fetch budget settings from Supabase
+  // Format number as IDR
+  const formatToIDR = (value: string | number): string => {
+    if (typeof value === 'string') {
+      // Remove non-numeric characters
+      const numericValue = value.replace(/\D/g, '');
+      if (!numericValue) return '';
+      
+      // Format with thousand separators
+      return new Intl.NumberFormat('id-ID').format(parseInt(numericValue));
+    } else {
+      return new Intl.NumberFormat('id-ID').format(value);
+    }
+  };
+
+  // Parse IDR formatted string back to number
+  const parseIDRToNumber = (value: string): number => {
+    // Remove all non-numeric characters
+    return parseInt(value.replace(/\D/g, '')) || 0;
+  };
+
+  // Handle gaji input change with formatting
+  const handleGajiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const numericValue = value.replace(/\D/g, '');
+    if (numericValue === '') {
+      setGajiBulanan('');
+    } else {
+      setGajiBulanan(formatToIDR(numericValue));
+    }
+  };
+
+  // Fetch budget settings and mandatory expenses from Supabase
   useEffect(() => {
-    const fetchBudgetSettings = async () => {
+    const fetchData = async () => {
       try {
         const {
           data: {
             user
           }
         } = await supabase.auth.getUser();
+        
         if (user) {
+          // Fetch budget settings
           const {
-            data,
-            error
+            data: budgetData,
+            error: budgetError
           } = await supabase.from('budget_settings').select('monthly_salary, fixed_expenses').eq('user_id', user.id).single();
-          if (error && error.code !== 'PGRST116') {
+          
+          if (budgetError && budgetError.code !== 'PGRST116') {
             // PGRST116 means no rows returned
-            throw error;
+            throw budgetError;
           }
-          if (data) {
-            setGajiBulanan(data.monthly_salary || 0);
-            // If fixed_expenses exists, update totalBelanjaWajib
-            if (data.fixed_expenses !== null) {
-              setTotalBelanjaWajib(data.fixed_expenses);
+          
+          if (budgetData) {
+            if (budgetData.monthly_salary) {
+              setGajiBulanan(formatToIDR(budgetData.monthly_salary));
             }
+            if (budgetData.fixed_expenses !== null) {
+              setTotalBelanjaWajib(budgetData.fixed_expenses);
+            }
+          }
+          
+          // Fetch mandatory expenses from fixed_expenses table
+          const {
+            data: expensesData,
+            error: expensesError
+          } = await supabase.from('fixed_expenses').select('*').eq('user_id', user.id);
+          
+          if (expensesError) {
+            throw expensesError;
+          }
+          
+          if (expensesData && expensesData.length > 0) {
+            const formattedExpenses = expensesData.map((expense, index) => ({
+              id: index + 1, // Use index as id for the UI
+              name: expense.description,
+              amount: parseFloat(expense.amount.toString()),
+              category: "Lainnya",
+              dbId: expense.id // Keep the database ID for updates/deletes
+            }));
+            setMandatoryExpenses(formattedExpenses);
           }
         }
       } catch (error) {
-        console.error('Error fetching budget settings:', error);
+        console.error('Error fetching data:', error);
+        toast.error("Gagal memuat data");
       }
     };
-    fetchBudgetSettings();
+    
+    fetchData();
   }, []);
 
   // Form for adding new mandatory expense
@@ -106,46 +154,154 @@ const BelanjaGaji = () => {
 
   // Calculate daily spending limit
   useEffect(() => {
-    if (gajiBulanan > 0) {
+    if (gajiBulanan) {
+      const monthlyIncome = parseIDRToNumber(gajiBulanan);
       const currentDate = new Date();
       const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-      const dailyLimit = (gajiBulanan - totalBelanjaWajib) / daysInMonth;
+      const dailyLimit = (monthlyIncome - totalBelanjaWajib) / daysInMonth;
       setBatasHarian(Math.max(0, dailyLimit));
 
-      // Calculate sample savings (for demo purposes)
-      const potentialSavingsPerMonth = gajiBulanan - totalBelanjaWajib;
-      setSavings(Math.max(0, potentialSavingsPerMonth * 0.2)); // Assuming 20% of remaining money is saved
+      // Calculate sample savings (20% of remaining money)
+      const potentialSavingsPerMonth = monthlyIncome - totalBelanjaWajib;
+      setSavings(Math.max(0, potentialSavingsPerMonth * 0.2));
     }
   }, [gajiBulanan, totalBelanjaWajib]);
 
-  const onSubmit = (data: z.infer<typeof mandatoryExpenseSchema>) => {
-    const newExpense = {
-      id: Date.now(),
-      name: data.name,
-      amount: parseFloat(data.amount),
-      category: "Lainnya" // Default category since we're removing the category input
-    };
-    setMandatoryExpenses([...mandatoryExpenses, newExpense]);
-    form.reset();
-    setShowAddForm(false);
-    toast.success("Pengeluaran wajib berhasil ditambahkan");
+  const onSubmit = async (data: z.infer<typeof mandatoryExpenseSchema>) => {
+    try {
+      setLoading(true);
+      
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Silakan login terlebih dahulu");
+        return;
+      }
+      
+      // Parse the amount from formatted string
+      const amountValue = parseIDRToNumber(data.amount);
+      
+      // Save to Supabase
+      const { data: expenseData, error } = await supabase.from('fixed_expenses').insert({
+        user_id: user.id,
+        description: data.name,
+        amount: amountValue
+      }).select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Add to local state with the returned database ID
+      const newExpense = {
+        id: mandatoryExpenses.length + 1,
+        name: data.name,
+        amount: amountValue,
+        category: "Lainnya",
+        dbId: expenseData[0].id
+      };
+      
+      setMandatoryExpenses([...mandatoryExpenses, newExpense]);
+      form.reset();
+      setShowAddForm(false);
+      toast.success("Pengeluaran wajib berhasil ditambahkan");
+      
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      toast.error("Gagal menambahkan pengeluaran wajib");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEdit = (id: number) => {
-    // This would be expanded in a real app to allow editing
-    toast.info("Fitur edit akan datang segera");
+    setEditMode(id);
+    const expense = mandatoryExpenses.find(item => item.id === id);
+    if (expense) {
+      form.setValue("name", expense.name);
+      form.setValue("amount", formatToIDR(expense.amount));
+      setShowAddForm(true);
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setMandatoryExpenses(mandatoryExpenses.filter(item => item.id !== id));
-    toast.success("Pengeluaran wajib berhasil dihapus");
+  const handleUpdate = async () => {
+    try {
+      setLoading(true);
+      
+      if (editMode === null) return;
+      
+      const expenseToUpdate = mandatoryExpenses.find(item => item.id === editMode);
+      if (!expenseToUpdate || !expenseToUpdate.dbId) return;
+      
+      const name = form.getValues("name");
+      const amount = parseIDRToNumber(form.getValues("amount"));
+      
+      // Update in Supabase
+      const { error } = await supabase.from('fixed_expenses').update({
+        description: name,
+        amount: amount
+      }).eq('id', expenseToUpdate.dbId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update local state
+      setMandatoryExpenses(mandatoryExpenses.map(item => 
+        item.id === editMode ? { ...item, name, amount } : item
+      ));
+      
+      form.reset();
+      setShowAddForm(false);
+      setEditMode(null);
+      toast.success("Pengeluaran wajib berhasil diperbarui");
+      
+    } catch (error) {
+      console.error('Error updating expense:', error);
+      toast.error("Gagal memperbarui pengeluaran wajib");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      const expenseToDelete = mandatoryExpenses.find(item => item.id === id);
+      if (!expenseToDelete || !expenseToDelete.dbId) return;
+      
+      // Delete from Supabase
+      const { error } = await supabase.from('fixed_expenses').delete().eq('id', expenseToDelete.dbId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Remove from local state
+      setMandatoryExpenses(mandatoryExpenses.filter(item => item.id !== id));
+      toast.success("Pengeluaran wajib berhasil dihapus");
+      
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      toast.error("Gagal menghapus pengeluaran wajib");
+    }
   };
 
   const handleSaveIncome = async () => {
-    if (gajiBulanan <= 0) {
+    if (!gajiBulanan) {
+      toast.error("Gaji bulanan harus diisi");
+      return;
+    }
+    
+    const monthlyIncome = parseIDRToNumber(gajiBulanan);
+    if (monthlyIncome <= 0) {
       toast.error("Gaji bulanan harus lebih dari 0");
       return;
     }
+    
     try {
       setLoading(true);
       const {
@@ -166,14 +322,14 @@ const BelanjaGaji = () => {
       if (existingData && existingData.length > 0) {
         // Update existing record
         result = await supabase.from('budget_settings').update({
-          monthly_salary: gajiBulanan,
+          monthly_salary: monthlyIncome,
           updated_at: new Date().toISOString()
         }).eq('user_id', user.id);
       } else {
         // Insert new record
         result = await supabase.from('budget_settings').insert({
           user_id: user.id,
-          monthly_salary: gajiBulanan
+          monthly_salary: monthlyIncome
         });
       }
       if (result.error) {
@@ -230,6 +386,12 @@ const BelanjaGaji = () => {
     return acc;
   }, {} as Record<string, typeof mandatoryExpenses>);
 
+  const cancelEdit = () => {
+    setEditMode(null);
+    setShowAddForm(false);
+    form.reset();
+  };
+
   return (
     <MainLayout title="Pengaturan Gaji & Belanja Wajib">
       <div className="space-y-6 animate-fade-in">
@@ -243,9 +405,9 @@ const BelanjaGaji = () => {
                   <BadgeDollarSign className="text-mibu-purple" />
                   <Input 
                     id="gaji-bulanan" 
-                    type="number" 
-                    value={gajiBulanan || ""} 
-                    onChange={e => setGajiBulanan(parseFloat(e.target.value) || 0)} 
+                    type="text"
+                    value={gajiBulanan} 
+                    onChange={handleGajiChange} 
                     placeholder="Masukkan gaji bulanan" 
                     className="flex-1" 
                   />
@@ -267,10 +429,22 @@ const BelanjaGaji = () => {
             <h2 className="text-lg font-medium">Belanja Wajib Bulanan</h2>
             <Button 
               variant="outline" 
-              onClick={() => setShowAddForm(!showAddForm)} 
+              onClick={() => {
+                if (!showAddForm) {
+                  setShowAddForm(true);
+                  setEditMode(null);
+                  form.reset();
+                } else {
+                  cancelEdit();
+                }
+              }} 
               className="text-mibu-purple border-mibu-purple"
             >
-              {showAddForm ? "Batal" : "Tambah Pengeluaran"}
+              {showAddForm ? (
+                <>Batal</>
+              ) : (
+                <><Plus size={16} className="mr-1" /> Tambah Pengeluaran</>
+              )}
             </Button>
           </div>
           
@@ -278,7 +452,7 @@ const BelanjaGaji = () => {
             <Card className="mb-4">
               <CardContent className="p-4">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                  <form onSubmit={form.handleSubmit(editMode !== null ? handleUpdate : onSubmit)} className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField 
                         control={form.control} 
@@ -301,7 +475,14 @@ const BelanjaGaji = () => {
                           <FormItem>
                             <FormLabel>Jumlah (Rp)</FormLabel>
                             <FormControl>
-                              <Input type="number" placeholder="0" {...field} />
+                              <Input 
+                                placeholder="0" 
+                                {...field} 
+                                onChange={(e) => {
+                                  const formatted = formatToIDR(e.target.value);
+                                  field.onChange(formatted);
+                                }}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -309,10 +490,18 @@ const BelanjaGaji = () => {
                       />
                     </div>
                     
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                      {editMode !== null && (
+                        <Button type="button" variant="outline" onClick={cancelEdit}>
+                          Batal
+                        </Button>
+                      )}
                       <Button type="submit">
-                        <Save size={18} className="mr-2" />
-                        Simpan Pengeluaran
+                        {editMode !== null ? (
+                          <><Save size={18} className="mr-2" /> Perbarui</>
+                        ) : (
+                          <><Save size={18} className="mr-2" /> Simpan Pengeluaran</>
+                        )}
                       </Button>
                     </div>
                   </form>
@@ -334,13 +523,21 @@ const BelanjaGaji = () => {
                             <span>{expense.name}</span>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">
-                                Rp {expense.amount.toLocaleString('id-ID')}
+                                Rp {formatToIDR(expense.amount)}
                               </span>
-                              <button onClick={() => handleEdit(expense.id)} className="p-1 text-gray-500 hover:text-mibu-purple">
+                              <button 
+                                onClick={() => handleEdit(expense.id)} 
+                                className="p-1 text-gray-500 hover:text-mibu-purple"
+                                aria-label="Edit"
+                              >
                                 <Edit size={16} />
                               </button>
-                              <button onClick={() => handleDelete(expense.id)} className="p-1 text-gray-500 hover:text-red-500">
-                                ×
+                              <button 
+                                onClick={() => handleDelete(expense.id)} 
+                                className="p-1 text-gray-500 hover:text-red-500"
+                                aria-label="Hapus"
+                              >
+                                <Trash2 size={16} />
                               </button>
                             </div>
                           </li>
@@ -351,7 +548,7 @@ const BelanjaGaji = () => {
                   <div className="border-t pt-3 mt-3 flex justify-between text-lg font-medium">
                     <span>Total Belanja Wajib</span>
                     <span className="text-mibu-purple">
-                      Rp {totalBelanjaWajib.toLocaleString('id-ID')}
+                      Rp {formatToIDR(totalBelanjaWajib)}
                     </span>
                   </div>
                   
@@ -383,9 +580,7 @@ const BelanjaGaji = () => {
               <div className="text-center p-4 bg-mibu-lightgray rounded-lg">
                 <div className="text-sm text-mibu-gray mb-1">Batas Belanja Harian Anda</div>
                 <div className="text-2xl font-bold text-mibu-purple">
-                  Rp {batasHarian.toLocaleString('id-ID', {
-                    maximumFractionDigits: 0
-                  })}
+                  Rp {formatToIDR(batasHarian)}
                 </div>
                 <div className="text-xs text-mibu-gray mt-1">
                   Dihitung dari: (Gaji Bulanan - Total Belanja Wajib) ÷ Jumlah hari dalam bulan ini
@@ -395,11 +590,14 @@ const BelanjaGaji = () => {
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span>0</span>
-                  <span>Rp {(gajiBulanan / 30).toLocaleString('id-ID', {
-                    maximumFractionDigits: 0
-                  })}</span>
+                  <span>
+                    Rp {formatToIDR(parseIDRToNumber(gajiBulanan || '0') / 30)}
+                  </span>
                 </div>
-                <Progress value={batasHarian / (gajiBulanan / 30) * 100} className="h-2" />
+                <Progress 
+                  value={batasHarian / (parseIDRToNumber(gajiBulanan || '0') / 30) * 100} 
+                  className="h-2" 
+                />
               </div>
             </CardContent>
           </Card>
@@ -414,9 +612,7 @@ const BelanjaGaji = () => {
                 <div>
                   <div className="text-sm text-mibu-gray">Potensi Tabungan Bulanan</div>
                   <div className="text-xl font-bold text-green-500">
-                    Rp {savings.toLocaleString('id-ID', {
-                      maximumFractionDigits: 0
-                    })}
+                    Rp {formatToIDR(savings)}
                   </div>
                 </div>
               </div>
@@ -425,7 +621,7 @@ const BelanjaGaji = () => {
                 <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
                   Hebat! Dengan pengaturan ini, Anda berpotensi menabung hingga{" "}
                   <span className="font-medium">
-                    Rp {(savings * 12).toLocaleString('id-ID')}
+                    Rp {formatToIDR(savings * 12)}
                   </span>{" "}
                   dalam setahun.
                 </div>
