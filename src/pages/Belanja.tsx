@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Wallet, AlertTriangle, BadgeDollarSign, Save } from 'lucide-react';
@@ -10,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+
 const Belanja = () => {
   const [gajiBulanan, setGajiBulanan] = useState<number>(0);
   const [belanjaWajib, setBelanjaWajib] = useState<number>(0);
@@ -25,6 +27,7 @@ const Belanja = () => {
   const parseIDR = (value: string): number => {
     return Number(value.replace(/\./g, ''));
   };
+
   const [shoppingItems, setShoppingItems] = useState<{
     id: number;
     name: string;
@@ -42,6 +45,7 @@ const Belanja = () => {
     name: "Daging Ayam 1kg",
     price: 45000
   }]);
+
   const [newItem, setNewItem] = useState({
     name: "",
     price: ""
@@ -67,8 +71,8 @@ const Belanja = () => {
             throw error;
           }
           if (data) {
-            setGajiBulanan(data.monthly_salary);
-            setBelanjaWajib(data.fixed_expenses ?? 0);
+            setGajiBulanan(data.monthly_salary || 0);
+            setBelanjaWajib(data.fixed_expenses || 0);
           }
         }
       } catch (error) {
@@ -82,13 +86,14 @@ const Belanja = () => {
 
   // Calculate daily spending limit
   useEffect(() => {
-    if (gajiBulanan > 0 && belanjaWajib >= 0) {
+    if (gajiBulanan > 0) {
       const currentDate = new Date();
       const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
       const dailyLimit = (gajiBulanan - belanjaWajib) / daysInMonth;
       setBatasHarian(Math.max(0, dailyLimit));
     }
   }, [gajiBulanan, belanjaWajib]);
+
   const handleAddItem = () => {
     if (!newItem.name || !newItem.price) {
       toast.error("Mohon isi nama dan harga barang");
@@ -114,14 +119,13 @@ const Belanja = () => {
       toast.warning("Peringatan: Belanja hari ini melebihi batas harian!");
     }
   };
+
   const handleRemoveItem = (id: number) => {
     setShoppingItems(shoppingItems.filter(item => item.id !== id));
   };
+
   const totalSpending = shoppingItems.reduce((sum, item) => sum + item.price, 0);
   const isOverBudget = batasHarian > 0 && totalSpending > batasHarian;
-  const handleSaveIncome = async () => {
-    toast.info("Silakan ubah nilai gaji dan belanja wajib di halaman Pengaturan Gaji & Belanja Wajib");
-  };
 
   // Calculate budget percentage used
   const budgetPercentageUsed = batasHarian > 0 ? Math.min(totalSpending / batasHarian * 100, 100) : 0;
@@ -145,27 +149,75 @@ const Belanja = () => {
       price: formattedValue
     });
   };
-  return <MainLayout title="Belanja">
+
+  // Save shopping items to database
+  const handleSaveShopping = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Silakan login terlebih dahulu");
+        return;
+      }
+
+      // Convert local shopping items to database format
+      const dbItems = shoppingItems.map(item => ({
+        user_id: user.id,
+        name: item.name,
+        price: item.price,
+      }));
+
+      // Clear previous items and insert new ones
+      const { error: deleteError } = await supabase
+        .from('shopping_items')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (deleteError) throw deleteError;
+
+      if (dbItems.length > 0) {
+        const { error } = await supabase
+          .from('shopping_items')
+          .insert(dbItems);
+          
+        if (error) throw error;
+      }
+
+      toast.success("Belanja hari ini berhasil disimpan");
+    } catch (error) {
+      console.error('Error saving shopping items:', error);
+      toast.error("Gagal menyimpan belanja");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <MainLayout title="Belanja">
       <div className="space-y-6">
         {/* Budget Alert */}
-        {isOverBudget && <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
+        {isOverBudget && (
+          <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
             <AlertTriangle className="h-4 w-4 mr-2" />
             <AlertDescription>
               Belanja hari ini melebihi batas harian! (Rp {formatIDR(totalSpending)} dari batas Rp {formatIDR(batasHarian)})
             </AlertDescription>
-          </Alert>}
+          </Alert>
+        )}
         
         <section className="animate-fade-in border border-gray-200 rounded-lg p-4">
           <Card className="border-2">
             <CardContent className="p-4 space-y-4">
-              <div>
-                
-                
-              </div>
-              
-              <div>
-                
-                
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm text-gray-500">Gaji Bulanan</div>
+                  <div className="text-lg font-semibold">Rp {formatIDR(gajiBulanan)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Belanja Wajib</div>
+                  <div className="text-lg font-semibold">Rp {formatIDR(belanjaWajib)}</div>
+                </div>
               </div>
               
               <div className="flex justify-between">
@@ -202,33 +254,52 @@ const Belanja = () => {
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Label htmlFor="item-name">Nama Barang</Label>
-                  <Input id="item-name" value={newItem.name} onChange={e => setNewItem({
-                  ...newItem,
-                  name: e.target.value
-                })} placeholder="Nama barang" className="mt-1" />
+                  <Input 
+                    id="item-name" 
+                    value={newItem.name} 
+                    onChange={e => setNewItem({...newItem, name: e.target.value})} 
+                    placeholder="Nama barang" 
+                    className="mt-1" 
+                  />
                 </div>
                 <div className="w-1/3">
                   <Label htmlFor="item-price">Harga (Rp)</Label>
-                  <Input id="item-price" value={newItem.price} onChange={e => handlePriceChange(e.target.value)} placeholder="Harga" className="mt-1" />
+                  <Input 
+                    id="item-price" 
+                    value={newItem.price} 
+                    onChange={e => handlePriceChange(e.target.value)} 
+                    placeholder="Harga" 
+                    className="mt-1" 
+                  />
                 </div>
                 <div className="flex items-end">
-                  <Button onClick={handleAddItem} className="mt-1 bg-mibu-purple hover:bg-mibu-darkpurple">Tambah</Button>
+                  <Button 
+                    onClick={handleAddItem} 
+                    className="mt-1 bg-mibu-purple hover:bg-mibu-darkpurple"
+                  >
+                    Tambah
+                  </Button>
                 </div>
               </div>
               
               <div className="mt-4">
                 <ul className="space-y-2">
-                  {shoppingItems.map(item => <li key={item.id} className="flex justify-between items-center">
+                  {shoppingItems.map(item => (
+                    <li key={item.id} className="flex justify-between items-center">
                       <span>{item.name}</span>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">
                           Rp {formatIDR(item.price)}
                         </span>
-                        <button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700 text-sm">
+                        <button 
+                          onClick={() => handleRemoveItem(item.id)} 
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
                           Hapus
                         </button>
                       </div>
-                    </li>)}
+                    </li>
+                  ))}
                 </ul>
               </div>
               
@@ -239,18 +310,36 @@ const Belanja = () => {
                 </span>
               </div>
               
-              {isOverBudget && <div className="flex items-center p-2 bg-red-50 text-red-800 rounded-md border border-red-200">
+              {isOverBudget && (
+                <div className="flex items-center p-2 bg-red-50 text-red-800 rounded-md border border-red-200">
                   <AlertTriangle size={20} className="mr-2" />
                   <span className="text-sm">Belanja hari ini melebihi batas harian!</span>
-                </div>}
+                </div>
+              )}
               
-              {!isOverBudget && totalSpending > 0 && <div className="flex items-center p-2 bg-green-50 text-green-800 rounded-md border border-green-200">
+              {!isOverBudget && totalSpending > 0 && (
+                <div className="flex items-center p-2 bg-green-50 text-green-800 rounded-md border border-green-200">
                   <span className="text-sm">👏 Bagus! Belanja Anda masih dalam batas harian.</span>
-                </div>}
+                </div>
+              )}
+
+              {/* Add a save button for shopping items */}
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleSaveShopping} 
+                  className="bg-mibu-purple hover:bg-mibu-darkpurple"
+                  disabled={loading || shoppingItems.length === 0}
+                >
+                  <Save size={18} className="mr-2" />
+                  {loading ? "Menyimpan..." : "Simpan Belanja"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </section>
       </div>
-    </MainLayout>;
+    </MainLayout>
+  );
 };
+
 export default Belanja;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Save, Edit, BadgeDollarSign, TrendingUp } from 'lucide-react';
 import MainLayout from '@/components/MainLayout';
@@ -13,18 +14,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
-// Define form schema for mandatory expenses
+// Define form schema for mandatory expenses - removed category field
 const mandatoryExpenseSchema = z.object({
   name: z.string().min(1, {
     message: "Nama pengeluaran harus diisi"
   }),
   amount: z.string().refine(val => !isNaN(Number(val)) && Number(val) > 0, {
     message: "Jumlah harus berupa angka positif"
-  }),
-  category: z.string().min(1, {
-    message: "Kategori harus dipilih"
   })
 });
+
 const BelanjaGaji = () => {
   const [gajiBulanan, setGajiBulanan] = useState<number>(0);
   const [totalBelanjaWajib, setTotalBelanjaWajib] = useState<number>(0);
@@ -70,13 +69,17 @@ const BelanjaGaji = () => {
           const {
             data,
             error
-          } = await supabase.from('budget_settings').select('monthly_salary').eq('user_id', user.id).single();
+          } = await supabase.from('budget_settings').select('monthly_salary, fixed_expenses').eq('user_id', user.id).single();
           if (error && error.code !== 'PGRST116') {
             // PGRST116 means no rows returned
             throw error;
           }
           if (data) {
-            setGajiBulanan(data.monthly_salary);
+            setGajiBulanan(data.monthly_salary || 0);
+            // If fixed_expenses exists, update totalBelanjaWajib
+            if (data.fixed_expenses !== null) {
+              setTotalBelanjaWajib(data.fixed_expenses);
+            }
           }
         }
       } catch (error) {
@@ -91,8 +94,7 @@ const BelanjaGaji = () => {
     resolver: zodResolver(mandatoryExpenseSchema),
     defaultValues: {
       name: "",
-      amount: "",
-      category: ""
+      amount: ""
     }
   });
 
@@ -115,26 +117,30 @@ const BelanjaGaji = () => {
       setSavings(Math.max(0, potentialSavingsPerMonth * 0.2)); // Assuming 20% of remaining money is saved
     }
   }, [gajiBulanan, totalBelanjaWajib]);
+
   const onSubmit = (data: z.infer<typeof mandatoryExpenseSchema>) => {
     const newExpense = {
       id: Date.now(),
       name: data.name,
       amount: parseFloat(data.amount),
-      category: data.category
+      category: "Lainnya" // Default category since we're removing the category input
     };
     setMandatoryExpenses([...mandatoryExpenses, newExpense]);
     form.reset();
     setShowAddForm(false);
     toast.success("Pengeluaran wajib berhasil ditambahkan");
   };
+
   const handleEdit = (id: number) => {
     // This would be expanded in a real app to allow editing
     toast.info("Fitur edit akan datang segera");
   };
+
   const handleDelete = (id: number) => {
     setMandatoryExpenses(mandatoryExpenses.filter(item => item.id !== id));
     toast.success("Pengeluaran wajib berhasil dihapus");
   };
+
   const handleSaveIncome = async () => {
     if (gajiBulanan <= 0) {
       toast.error("Gaji bulanan harus lebih dari 0");
@@ -223,7 +229,9 @@ const BelanjaGaji = () => {
     acc[expense.category].push(expense);
     return acc;
   }, {} as Record<string, typeof mandatoryExpenses>);
-  return <MainLayout title="Pengaturan Gaji & Belanja Wajib">
+
+  return (
+    <MainLayout title="Pengaturan Gaji & Belanja Wajib">
       <div className="space-y-6 animate-fade-in">
         <section>
           <h2 className="text-lg font-medium mb-3">Gaji Bulanan</h2>
@@ -233,7 +241,14 @@ const BelanjaGaji = () => {
                 <Label htmlFor="gaji-bulanan">Gaji Bulanan (Rp)</Label>
                 <div className="flex gap-2 items-center mt-1">
                   <BadgeDollarSign className="text-mibu-purple" />
-                  <Input id="gaji-bulanan" type="number" value={gajiBulanan || ""} onChange={e => setGajiBulanan(parseFloat(e.target.value) || 0)} placeholder="Masukkan gaji bulanan" className="flex-1" />
+                  <Input 
+                    id="gaji-bulanan" 
+                    type="number" 
+                    value={gajiBulanan || ""} 
+                    onChange={e => setGajiBulanan(parseFloat(e.target.value) || 0)} 
+                    placeholder="Masukkan gaji bulanan" 
+                    className="flex-1" 
+                  />
                 </div>
               </div>
               
@@ -250,46 +265,49 @@ const BelanjaGaji = () => {
         <section>
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-medium">Belanja Wajib Bulanan</h2>
-            <Button variant="outline" onClick={() => setShowAddForm(!showAddForm)} className="text-mibu-purple border-mibu-purple">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAddForm(!showAddForm)} 
+              className="text-mibu-purple border-mibu-purple"
+            >
               {showAddForm ? "Batal" : "Tambah Pengeluaran"}
             </Button>
           </div>
           
-          {showAddForm && <Card className="mb-4">
+          {showAddForm && (
+            <Card className="mb-4">
               <CardContent className="p-4">
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField control={form.control} name="name" render={({
-                    field
-                  }) => <FormItem>
+                      <FormField 
+                        control={form.control} 
+                        name="name" 
+                        render={({ field }) => (
+                          <FormItem>
                             <FormLabel>Nama Pengeluaran</FormLabel>
                             <FormControl>
                               <Input placeholder="Contoh: Listrik, Air, dll" {...field} />
                             </FormControl>
                             <FormMessage />
-                          </FormItem>} />
+                          </FormItem>
+                        )} 
+                      />
                       
-                      <FormField control={form.control} name="amount" render={({
-                    field
-                  }) => <FormItem>
+                      <FormField 
+                        control={form.control} 
+                        name="amount" 
+                        render={({ field }) => (
+                          <FormItem>
                             <FormLabel>Jumlah (Rp)</FormLabel>
                             <FormControl>
                               <Input type="number" placeholder="0" {...field} />
                             </FormControl>
                             <FormMessage />
-                          </FormItem>} />
+                          </FormItem>
+                        )} 
+                      />
                     </div>
-                    
-                    <FormField control={form.control} name="category" render={({
-                  field
-                }) => <FormItem>
-                          
-                          <FormControl>
-                            
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>} />
                     
                     <div className="flex justify-end">
                       <Button type="submit">
@@ -300,15 +318,19 @@ const BelanjaGaji = () => {
                   </form>
                 </Form>
               </CardContent>
-            </Card>}
+            </Card>
+          )}
           
           <Card>
             <CardContent className="p-4">
-              {Object.keys(expensesByCategory).length > 0 ? <div className="space-y-4">
-                  {Object.entries(expensesByCategory).map(([category, expenses]) => <div key={category} className="border-b last:border-b-0 pb-3 last:pb-0">
+              {Object.keys(expensesByCategory).length > 0 ? (
+                <div className="space-y-4">
+                  {Object.entries(expensesByCategory).map(([category, expenses]) => (
+                    <div key={category} className="border-b last:border-b-0 pb-3 last:pb-0">
                       <h3 className="font-medium text-mibu-purple mb-2">{category}</h3>
                       <ul className="space-y-2">
-                        {expenses.map(expense => <li key={expense.id} className="flex justify-between items-center">
+                        {expenses.map(expense => (
+                          <li key={expense.id} className="flex justify-between items-center">
                             <span>{expense.name}</span>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">
@@ -321,9 +343,11 @@ const BelanjaGaji = () => {
                                 ×
                               </button>
                             </div>
-                          </li>)}
+                          </li>
+                        ))}
                       </ul>
-                    </div>)}
+                    </div>
+                  ))}
                   <div className="border-t pt-3 mt-3 flex justify-between text-lg font-medium">
                     <span>Total Belanja Wajib</span>
                     <span className="text-mibu-purple">
@@ -331,16 +355,23 @@ const BelanjaGaji = () => {
                     </span>
                   </div>
                   
-                  {/* New Save Button for Total Mandatory Expenses */}
+                  {/* Save Button for Total Mandatory Expenses */}
                   <div className="flex justify-end mt-4">
-                    <Button onClick={handleSaveAllExpenses} className="bg-mibu-purple hover:bg-mibu-darkpurple" disabled={loading}>
+                    <Button 
+                      onClick={handleSaveAllExpenses} 
+                      className="bg-mibu-purple hover:bg-mibu-darkpurple" 
+                      disabled={loading}
+                    >
                       <Save size={18} className="mr-2" />
                       {loading ? "Menyimpan..." : "Simpan Total Belanja Wajib"}
                     </Button>
                   </div>
-                </div> : <div className="text-center py-4 text-muted-foreground">
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
                   Belum ada pengeluaran wajib yang ditambahkan
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
@@ -353,8 +384,8 @@ const BelanjaGaji = () => {
                 <div className="text-sm text-mibu-gray mb-1">Batas Belanja Harian Anda</div>
                 <div className="text-2xl font-bold text-mibu-purple">
                   Rp {batasHarian.toLocaleString('id-ID', {
-                  maximumFractionDigits: 0
-                })}
+                    maximumFractionDigits: 0
+                  })}
                 </div>
                 <div className="text-xs text-mibu-gray mt-1">
                   Dihitung dari: (Gaji Bulanan - Total Belanja Wajib) ÷ Jumlah hari dalam bulan ini
@@ -384,23 +415,27 @@ const BelanjaGaji = () => {
                   <div className="text-sm text-mibu-gray">Potensi Tabungan Bulanan</div>
                   <div className="text-xl font-bold text-green-500">
                     Rp {savings.toLocaleString('id-ID', {
-                    maximumFractionDigits: 0
-                  })}
+                      maximumFractionDigits: 0
+                    })}
                   </div>
                 </div>
               </div>
               
-              {savings > 0 && <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
+              {savings > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
                   Hebat! Dengan pengaturan ini, Anda berpotensi menabung hingga{" "}
                   <span className="font-medium">
                     Rp {(savings * 12).toLocaleString('id-ID')}
                   </span>{" "}
                   dalam setahun.
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
       </div>
-    </MainLayout>;
+    </MainLayout>
+  );
 };
+
 export default BelanjaGaji;
