@@ -28,6 +28,15 @@ const mandatoryExpenseSchema = z.object({
   })
 });
 
+// Define type for mandatory expenses
+interface MandatoryExpense {
+  id: number;
+  name: string;
+  amount: number;
+  category: string;
+  dbId?: string; // Add dbId as optional property
+}
+
 const BelanjaGaji = () => {
   const [gajiBulanan, setGajiBulanan] = useState<string>('');
   const [totalBelanjaWajib, setTotalBelanjaWajib] = useState<number>(0);
@@ -37,13 +46,8 @@ const BelanjaGaji = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [editMode, setEditMode] = useState<number | null>(null);
 
-  // Initialize with empty array instead of sample data
-  const [mandatoryExpenses, setMandatoryExpenses] = useState<{
-    id: number;
-    name: string;
-    amount: number;
-    category: string;
-  }[]>([]);
+  // Initialize with empty array
+  const [mandatoryExpenses, setMandatoryExpenses] = useState<MandatoryExpense[]>([]);
 
   // Format number as IDR
   const formatToIDR = (value: string | number): string => {
@@ -197,7 +201,7 @@ const BelanjaGaji = () => {
       }
       
       // Add to local state with the returned database ID
-      const newExpense = {
+      const newExpense: MandatoryExpense = {
         id: mandatoryExpenses.length + 1,
         name: data.name,
         amount: amountValue,

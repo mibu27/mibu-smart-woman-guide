@@ -28,32 +28,21 @@ const Belanja = () => {
     return Number(value.replace(/\./g, ''));
   };
 
+  // Initialize with empty array for shopping items
   const [shoppingItems, setShoppingItems] = useState<{
     id: number;
     name: string;
     price: number;
-  }[]>([{
-    id: 1,
-    name: "Beras 5kg",
-    price: 70000
-  }, {
-    id: 2,
-    name: "Sayur dan Buah",
-    price: 50000
-  }, {
-    id: 3,
-    name: "Daging Ayam 1kg",
-    price: 45000
-  }]);
+  }[]>([]);
 
   const [newItem, setNewItem] = useState({
     name: "",
     price: ""
   });
 
-  // Fetch user's budget settings on component mount
+  // Fetch user's budget settings and shopping items on component mount
   useEffect(() => {
-    const fetchBudgetSettings = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         const {
@@ -61,27 +50,52 @@ const Belanja = () => {
             user
           }
         } = await supabase.auth.getUser();
+        
         if (user) {
+          // Fetch budget settings
           const {
-            data,
-            error
+            data: budgetData,
+            error: budgetError
           } = await supabase.from('budget_settings').select('*').eq('user_id', user.id).single();
-          if (error && error.code !== 'PGRST116') {
+          
+          if (budgetError && budgetError.code !== 'PGRST116') {
             // PGRST116 means no rows returned
-            throw error;
+            throw budgetError;
           }
-          if (data) {
-            setGajiBulanan(data.monthly_salary || 0);
-            setBelanjaWajib(data.fixed_expenses || 0);
+          
+          if (budgetData) {
+            setGajiBulanan(budgetData.monthly_salary || 0);
+            setBelanjaWajib(budgetData.fixed_expenses || 0);
+          }
+          
+          // Fetch shopping items
+          const {
+            data: shoppingData,
+            error: shoppingError
+          } = await supabase.from('shopping_items').select('*').eq('user_id', user.id);
+          
+          if (shoppingError) {
+            throw shoppingError;
+          }
+          
+          if (shoppingData && shoppingData.length > 0) {
+            const formattedItems = shoppingData.map((item, index) => ({
+              id: index + 1,
+              name: item.name,
+              price: parseFloat(item.price.toString())
+            }));
+            setShoppingItems(formattedItems);
           }
         }
       } catch (error) {
-        console.error('Error fetching budget settings:', error);
+        console.error('Error fetching data:', error);
+        toast.error("Gagal memuat data");
       } finally {
         setLoading(false);
       }
     };
-    fetchBudgetSettings();
+    
+    fetchData();
   }, []);
 
   // Calculate daily spending limit
@@ -283,47 +297,57 @@ const Belanja = () => {
               </div>
               
               <div className="mt-4">
-                <ul className="space-y-2">
-                  {shoppingItems.map(item => (
-                    <li key={item.id} className="flex justify-between items-center">
-                      <span>{item.name}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          Rp {formatIDR(item.price)}
-                        </span>
-                        <button 
-                          onClick={() => handleRemoveItem(item.id)} 
-                          className="text-red-500 hover:text-red-700 text-sm"
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                {shoppingItems.length > 0 ? (
+                  <ul className="space-y-2">
+                    {shoppingItems.map(item => (
+                      <li key={item.id} className="flex justify-between items-center">
+                        <span>{item.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            Rp {formatIDR(item.price)}
+                          </span>
+                          <button 
+                            onClick={() => handleRemoveItem(item.id)} 
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    Belum ada item belanja yang ditambahkan
+                  </div>
+                )}
               </div>
               
-              <div className="border-t pt-3 mt-3 flex justify-between font-medium">
-                <span>Total Belanja</span>
-                <span className={isOverBudget ? 'text-red-600' : ''}>
-                  Rp {formatIDR(totalSpending)}
-                </span>
-              </div>
-              
-              {isOverBudget && (
-                <div className="flex items-center p-2 bg-red-50 text-red-800 rounded-md border border-red-200">
-                  <AlertTriangle size={20} className="mr-2" />
-                  <span className="text-sm">Belanja hari ini melebihi batas harian!</span>
-                </div>
-              )}
-              
-              {!isOverBudget && totalSpending > 0 && (
-                <div className="flex items-center p-2 bg-green-50 text-green-800 rounded-md border border-green-200">
-                  <span className="text-sm">👏 Bagus! Belanja Anda masih dalam batas harian.</span>
-                </div>
+              {shoppingItems.length > 0 && (
+                <>
+                  <div className="border-t pt-3 mt-3 flex justify-between font-medium">
+                    <span>Total Belanja</span>
+                    <span className={isOverBudget ? 'text-red-600' : ''}>
+                      Rp {formatIDR(totalSpending)}
+                    </span>
+                  </div>
+                  
+                  {isOverBudget && (
+                    <div className="flex items-center p-2 bg-red-50 text-red-800 rounded-md border border-red-200">
+                      <AlertTriangle size={20} className="mr-2" />
+                      <span className="text-sm">Belanja hari ini melebihi batas harian!</span>
+                    </div>
+                  )}
+                  
+                  {!isOverBudget && totalSpending > 0 && (
+                    <div className="flex items-center p-2 bg-green-50 text-green-800 rounded-md border border-green-200">
+                      <span className="text-sm">👏 Bagus! Belanja Anda masih dalam batas harian.</span>
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* Add a save button for shopping items */}
+              {/* Save button for shopping items */}
               <div className="flex justify-end">
                 <Button 
                   onClick={handleSaveShopping} 

@@ -180,12 +180,10 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
             <Info size={20} className="mr-3" />
             <span>Tentang MIBU</span>
           </Link>
-        </div>
-        
-        <div className="p-4 border-t">
+          
           <Button 
             variant="outline" 
-            className="flex w-full items-center justify-center text-red-500 hover:bg-red-50 border-red-200"
+            className="flex w-full items-center justify-center text-red-500 hover:bg-red-50 border-red-200 mt-3"
             onClick={handleLogout}
           >
             <LogOut size={18} className="mr-2" />
