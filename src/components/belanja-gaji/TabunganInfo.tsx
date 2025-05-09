@@ -28,22 +28,12 @@ const TabunganInfo = ({
             </div>
           </div>
           
-          {savings > 0 ? (
-            <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
-              Hebat! Dengan pengaturan ini, Anda berpotensi menabung hingga{" "}
-              <span className="font-medium">
-                Rp {formatToIDR(savings * 12)}
-              </span>{" "}
-              dalam setahun.
-            </div>
-          ) : (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-700 flex items-center gap-2">
-              <PlusCircle size={16} />
-              <span>
-                Atur gaji dan belanja wajib Anda untuk melihat potensi tabungan bulanan.
-              </span>
-            </div>
-          )}
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-700 flex items-center gap-2">
+            <PlusCircle size={16} />
+            <span>
+              Atur gaji dan belanja wajib Anda untuk melihat potensi tabungan bulanan.
+            </span>
+          </div>
         </CardContent>
       </Card>
     </section>
