@@ -25,17 +25,8 @@ interface ImportantEvent {
 
 const Jadwal = () => {
   const [date, setDate] = useState<Date>(new Date());
-  const [todoList, setTodoList] = useState<TodoItem[]>([
-    { id: 1, text: "Pertemuan dengan guru 09:00", completed: false },
-    { id: 2, text: "Antar anak les 15:30", completed: true },
-    { id: 3, text: "Belanja bahan masakan", completed: false }
-  ]);
-  
-  const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([
-    { id: 1, text: "Pengajian ibu-ibu 19:30", location: "Masjid Al-Ikhlas", date: new Date() },
-    { id: 2, text: "Ulang tahun suami", location: "Rumah", date: new Date(new Date().setDate(new Date().getDate() + 5)) }
-  ]);
-  
+  const [todoList, setTodoList] = useState<TodoItem[]>([]);
+  const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([]);
   const [newTodo, setNewTodo] = useState("");
   const [newEvent, setNewEvent] = useState({ 
     text: "", 
