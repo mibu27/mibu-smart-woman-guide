@@ -50,6 +50,18 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
           </button>
         </div>
         
+        {/* Logout button moved to top */}
+        <div className="px-6 py-4 border-b">
+          <Button 
+            variant="outline" 
+            className="flex w-full items-center justify-center text-red-500 hover:bg-red-50 border-red-200"
+            onClick={handleLogout}
+          >
+            <LogOut size={18} className="mr-2" />
+            <span>Keluar</span>
+          </Button>
+        </div>
+        
         <div className="py-4 px-6 flex-grow overflow-auto">
           <div className="mb-4 border-b pb-4">
             <div className="text-xs text-gray-500 mb-1">NAVIGASI UTAMA</div>
@@ -180,15 +192,6 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
             <Info size={20} className="mr-3" />
             <span>Tentang MIBU</span>
           </Link>
-          
-          <Button 
-            variant="outline" 
-            className="flex w-full items-center justify-center text-red-500 hover:bg-red-50 border-red-200 mt-3"
-            onClick={handleLogout}
-          >
-            <LogOut size={18} className="mr-2" />
-            <span>Keluar</span>
-          </Button>
         </div>
       </div>
     </>

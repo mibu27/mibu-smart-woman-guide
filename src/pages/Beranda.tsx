@@ -48,20 +48,20 @@ const shortcuts = [
 
 // TypeScript interfaces for our data types
 interface TodoItem {
-  id: string; // Changed from number to string to match UUID from Supabase
+  id: string;
   text: string;
   completed: boolean;
 }
 
 interface ImportantEvent {
-  id: string; // Changed from number to string
+  id: string;
   text: string;
   location: string;
   date: Date;
 }
 
 interface ShoppingItem {
-  id: string; // Changed from number to string
+  id: string;
   name: string;
   price: number;
 }
@@ -223,7 +223,7 @@ const Beranda = () => {
         </div>
       </section>
 
-      {/* Shopping List - MOVED TO TOP per request */}
+      {/* Shopping List */}
       <section className="mb-6 border border-gray-200 rounded-lg p-3">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-medium">Daftar Belanja</h2>
@@ -268,15 +268,19 @@ const Beranda = () => {
                 )}
               </ul>
             ) : (
-              <div className="text-center py-4 text-gray-500">
-                Belum ada daftar belanja
+              <div className="text-center py-8 text-gray-500">
+                Belum ada daftar belanja. 
+                <br/>
+                <Link to="/belanja" className="text-mibu-purple hover:underline mt-2 inline-block">
+                  Tambahkan item belanja
+                </Link>
               </div>
             )}
           </CardContent>
         </Card>
       </section>
 
-      {/* To Do List - Now in the middle */}
+      {/* To Do List */}
       <section className="mb-6 border border-gray-200 rounded-lg p-3">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-medium">To Do List Hari Ini</h2>
@@ -305,15 +309,19 @@ const Beranda = () => {
                 ))}
               </ul>
             ) : (
-              <div className="text-center py-4 text-gray-500">
-                Tidak ada tugas untuk hari ini
+              <div className="text-center py-8 text-gray-500">
+                Tidak ada tugas untuk hari ini.
+                <br/>
+                <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
+                  Tambahkan tugas baru
+                </Link>
               </div>
             )}
           </CardContent>
         </Card>
       </section>
 
-      {/* Important Events - Now at the bottom */}
+      {/* Important Events */}
       <section className="mb-6 border border-gray-200 rounded-lg p-3">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-medium">Acara Penting</h2>
@@ -338,8 +346,12 @@ const Beranda = () => {
                 ))}
               </ul>
             ) : (
-              <div className="text-center py-4 text-gray-500">
-                Belum ada acara penting
+              <div className="text-center py-8 text-gray-500">
+                Belum ada acara penting.
+                <br/>
+                <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
+                  Tambahkan acara baru
+                </Link>
               </div>
             )}
           </CardContent>
