@@ -1,363 +1,76 @@
 
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Wallet, AlertTriangle, BadgeDollarSign, Save } from 'lucide-react';
+import React from 'react';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useBudget } from '@/hooks/useBudget';
+import { useShoppingItems } from '@/hooks/useShoppingItems';
+import BudgetSummary from '@/components/belanja/BudgetSummary';
+import BudgetAlert from '@/components/belanja/BudgetAlert';
+import ShoppingItemForm from '@/components/belanja/ShoppingItemForm';
+import ShoppingItemList from '@/components/belanja/ShoppingItemList';
 
 const Belanja = () => {
-  const [gajiBulanan, setGajiBulanan] = useState<number>(0);
-  const [belanjaWajib, setBelanjaWajib] = useState<number>(0);
-  const [batasHarian, setBatasHarian] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
-
-  // Format for displaying IDR
-  const formatIDR = (value: number): string => {
-    return value.toLocaleString('id-ID');
-  };
-
-  // Parse IDR formatted string back to number
-  const parseIDR = (value: string): number => {
-    return Number(value.replace(/\./g, ''));
-  };
-
-  // Initialize with empty array for shopping items
-  const [shoppingItems, setShoppingItems] = useState<{
-    id: number;
-    name: string;
-    price: number;
-  }[]>([]);
-
-  const [newItem, setNewItem] = useState({
-    name: "",
-    price: ""
-  });
-
-  // Fetch user's budget settings and shopping items on component mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const {
-          data: {
-            user
-          }
-        } = await supabase.auth.getUser();
-        
-        if (user) {
-          // Fetch budget settings
-          const {
-            data: budgetData,
-            error: budgetError
-          } = await supabase.from('budget_settings').select('*').eq('user_id', user.id).single();
-          
-          if (budgetError && budgetError.code !== 'PGRST116') {
-            // PGRST116 means no rows returned
-            throw budgetError;
-          }
-          
-          if (budgetData) {
-            setGajiBulanan(budgetData.monthly_salary || 0);
-            setBelanjaWajib(budgetData.fixed_expenses || 0);
-          }
-          
-          // Fetch shopping items
-          const {
-            data: shoppingData,
-            error: shoppingError
-          } = await supabase.from('shopping_items').select('*').eq('user_id', user.id);
-          
-          if (shoppingError) {
-            throw shoppingError;
-          }
-          
-          if (shoppingData && shoppingData.length > 0) {
-            const formattedItems = shoppingData.map((item, index) => ({
-              id: index + 1,
-              name: item.name,
-              price: parseFloat(item.price.toString())
-            }));
-            setShoppingItems(formattedItems);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error("Gagal memuat data");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
-
-  // Calculate daily spending limit
-  useEffect(() => {
-    if (gajiBulanan > 0) {
-      const currentDate = new Date();
-      const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-      const dailyLimit = (gajiBulanan - belanjaWajib) / daysInMonth;
-      setBatasHarian(Math.max(0, dailyLimit));
-    }
-  }, [gajiBulanan, belanjaWajib]);
-
-  const handleAddItem = () => {
-    if (!newItem.name || !newItem.price) {
-      toast.error("Mohon isi nama dan harga barang");
-      return;
-    }
-    const price = parseFloat(newItem.price.replace(/\./g, '').replace(/,/g, '.'));
-    if (isNaN(price) || price <= 0) {
-      toast.error("Harga harus berupa angka positif");
-      return;
-    }
-    const newItemObj = {
-      id: Date.now(),
-      name: newItem.name,
-      price: price
-    };
-    setShoppingItems([...shoppingItems, newItemObj]);
-    setNewItem({
-      name: "",
-      price: ""
-    });
-    const totalSpending = [...shoppingItems, newItemObj].reduce((sum, item) => sum + item.price, 0);
-    if (batasHarian > 0 && totalSpending > batasHarian) {
-      toast.warning("Peringatan: Belanja hari ini melebihi batas harian!");
-    }
-  };
-
-  const handleRemoveItem = (id: number) => {
-    setShoppingItems(shoppingItems.filter(item => item.id !== id));
-  };
-
-  const totalSpending = shoppingItems.reduce((sum, item) => sum + item.price, 0);
-  const isOverBudget = batasHarian > 0 && totalSpending > batasHarian;
+  // Use our custom hooks
+  const { 
+    gajiBulanan, 
+    belanjaWajib, 
+    batasHarian, 
+    formatIDR 
+  } = useBudget();
+  
+  const { 
+    shoppingItems, 
+    loading, 
+    totalSpending, 
+    addItem, 
+    removeItem, 
+    saveShoppingItems 
+  } = useShoppingItems();
 
   // Calculate budget percentage used
   const budgetPercentageUsed = batasHarian > 0 ? Math.min(totalSpending / batasHarian * 100, 100) : 0;
-
-  // Handle change for price input with IDR formatting
-  const handlePriceChange = (value: string) => {
-    // Remove non-numeric characters
-    const numericValue = value.replace(/\D/g, '');
-    if (numericValue === '') {
-      setNewItem({
-        ...newItem,
-        price: ''
-      });
-      return;
-    }
-
-    // Format as IDR
-    const formattedValue = parseInt(numericValue, 10).toLocaleString('id-ID');
-    setNewItem({
-      ...newItem,
-      price: formattedValue
-    });
-  };
-
-  // Save shopping items to database
-  const handleSaveShopping = async () => {
-    try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("Silakan login terlebih dahulu");
-        return;
-      }
-
-      // Convert local shopping items to database format
-      const dbItems = shoppingItems.map(item => ({
-        user_id: user.id,
-        name: item.name,
-        price: item.price,
-      }));
-
-      // Clear previous items and insert new ones
-      const { error: deleteError } = await supabase
-        .from('shopping_items')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (deleteError) throw deleteError;
-
-      if (dbItems.length > 0) {
-        const { error } = await supabase
-          .from('shopping_items')
-          .insert(dbItems);
-          
-        if (error) throw error;
-      }
-
-      toast.success("Belanja hari ini berhasil disimpan");
-    } catch (error) {
-      console.error('Error saving shopping items:', error);
-      toast.error("Gagal menyimpan belanja");
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  // Check if over budget
+  const isOverBudget = batasHarian > 0 && totalSpending > batasHarian;
 
   return (
     <MainLayout title="Belanja">
       <div className="space-y-6">
         {/* Budget Alert */}
-        {isOverBudget && (
-          <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            <AlertDescription>
-              Belanja hari ini melebihi batas harian! (Rp {formatIDR(totalSpending)} dari batas Rp {formatIDR(batasHarian)})
-            </AlertDescription>
-          </Alert>
-        )}
+        <BudgetAlert 
+          isOverBudget={isOverBudget}
+          totalSpending={totalSpending}
+          batasHarian={batasHarian}
+          formatIDR={formatIDR}
+        />
         
-        <section className="animate-fade-in border border-gray-200 rounded-lg p-4">
-          <Card className="border-2">
-            <CardContent className="p-4 space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <div className="text-sm text-gray-500">Gaji Bulanan</div>
-                  <div className="text-lg font-semibold">Rp {formatIDR(gajiBulanan)}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Belanja Wajib</div>
-                  <div className="text-lg font-semibold">Rp {formatIDR(belanjaWajib)}</div>
-                </div>
-              </div>
-              
-              <div className="flex justify-between">
-                <Link to="/belanja/gaji">
-                  <Button variant="outline" className="text-mibu-purple border-mibu-purple">
-                    <BadgeDollarSign size={18} className="mr-2" />
-                    Atur Detail Belanja Wajib
-                  </Button>
-                </Link>
-              </div>
-              
-              <div className="mt-4 p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
-                <div className="font-medium">Batas Belanja Harian</div>
-                <div className="text-xl font-bold text-mibu-purple mt-1">
-                  Rp {formatIDR(batasHarian)}
-                </div>
-                <div className="flex flex-col gap-1 mt-2">
-                  <Progress value={budgetPercentageUsed} className="h-2" />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>0%</span>
-                    <span>{Math.round(budgetPercentageUsed)}% digunakan</span>
-                    <span>100%</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+        {/* Budget Summary */}
+        <BudgetSummary 
+          gajiBulanan={gajiBulanan}
+          belanjaWajib={belanjaWajib}
+          batasHarian={batasHarian}
+          budgetPercentageUsed={budgetPercentageUsed}
+          formatIDR={formatIDR}
+        />
         
+        {/* Shopping List */}
         <section className="border border-gray-200 rounded-lg p-4">
           <h2 className="text-lg font-medium mb-3">Set Belanja Hari Ini</h2>
           <Card className="border-2">
             <CardContent className="p-4 space-y-4">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label htmlFor="item-name">Nama Barang</Label>
-                  <Input 
-                    id="item-name" 
-                    value={newItem.name} 
-                    onChange={e => setNewItem({...newItem, name: e.target.value})} 
-                    placeholder="Nama barang" 
-                    className="mt-1" 
-                  />
-                </div>
-                <div className="w-1/3">
-                  <Label htmlFor="item-price">Harga (Rp)</Label>
-                  <Input 
-                    id="item-price" 
-                    value={newItem.price} 
-                    onChange={e => handlePriceChange(e.target.value)} 
-                    placeholder="Harga" 
-                    className="mt-1" 
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button 
-                    onClick={handleAddItem} 
-                    className="mt-1 bg-mibu-purple hover:bg-mibu-darkpurple"
-                  >
-                    Tambah
-                  </Button>
-                </div>
-              </div>
+              {/* Form to add items */}
+              <ShoppingItemForm onAddItem={addItem} />
               
-              <div className="mt-4">
-                {shoppingItems.length > 0 ? (
-                  <ul className="space-y-2">
-                    {shoppingItems.map(item => (
-                      <li key={item.id} className="flex justify-between items-center">
-                        <span>{item.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            Rp {formatIDR(item.price)}
-                          </span>
-                          <button 
-                            onClick={() => handleRemoveItem(item.id)} 
-                            className="text-red-500 hover:text-red-700 text-sm"
-                          >
-                            Hapus
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground">
-                    Belum ada item belanja yang ditambahkan
-                  </div>
-                )}
-              </div>
-              
-              {shoppingItems.length > 0 && (
-                <>
-                  <div className="border-t pt-3 mt-3 flex justify-between font-medium">
-                    <span>Total Belanja</span>
-                    <span className={isOverBudget ? 'text-red-600' : ''}>
-                      Rp {formatIDR(totalSpending)}
-                    </span>
-                  </div>
-                  
-                  {isOverBudget && (
-                    <div className="flex items-center p-2 bg-red-50 text-red-800 rounded-md border border-red-200">
-                      <AlertTriangle size={20} className="mr-2" />
-                      <span className="text-sm">Belanja hari ini melebihi batas harian!</span>
-                    </div>
-                  )}
-                  
-                  {!isOverBudget && totalSpending > 0 && (
-                    <div className="flex items-center p-2 bg-green-50 text-green-800 rounded-md border border-green-200">
-                      <span className="text-sm">👏 Bagus! Belanja Anda masih dalam batas harian.</span>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Save button for shopping items */}
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleSaveShopping} 
-                  className="bg-mibu-purple hover:bg-mibu-darkpurple"
-                  disabled={loading || shoppingItems.length === 0}
-                >
-                  <Save size={18} className="mr-2" />
-                  {loading ? "Menyimpan..." : "Simpan Belanja"}
-                </Button>
-              </div>
+              {/* Shopping list */}
+              <ShoppingItemList 
+                items={shoppingItems}
+                onRemoveItem={removeItem}
+                onSaveItems={saveShoppingItems}
+                totalSpending={totalSpending}
+                isOverBudget={isOverBudget}
+                formatIDR={formatIDR}
+                loading={loading}
+              />
             </CardContent>
           </Card>
         </section>
