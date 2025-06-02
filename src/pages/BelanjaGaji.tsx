@@ -43,6 +43,18 @@ const BelanjaGaji = () => {
     return acc;
   }, {} as Record<string, typeof mandatoryExpenses>);
 
+  const handleAddExpenseClick = () => {
+    if (showAddForm) {
+      // If form is showing, cancel it
+      cancelEdit();
+      setShowAddForm(false);
+    } else {
+      // If form is not showing, show it and reset any edit mode
+      cancelEdit();
+      setShowAddForm(true);
+    }
+  };
+
   return (
     <MainLayout title="Pengaturan Gaji & Belanja Wajib">
       <div className="space-y-6 animate-fade-in">
@@ -60,14 +72,7 @@ const BelanjaGaji = () => {
             <h2 className="text-lg font-medium">Belanja Wajib Bulanan</h2>
             <Button 
               variant="outline" 
-              onClick={() => {
-                if (!showAddForm) {
-                  setShowAddForm(true);
-                  cancelEdit();
-                } else {
-                  cancelEdit();
-                }
-              }} 
+              onClick={handleAddExpenseClick}
               className="text-mibu-purple border-mibu-purple"
             >
               {showAddForm ? (
