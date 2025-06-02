@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { useBudget } from '@/hooks/useBudget';
@@ -17,7 +17,8 @@ const Belanja = () => {
     gajiBulanan, 
     belanjaWajib, 
     batasHarian, 
-    formatIDR 
+    formatIDR,
+    refreshBudgetData
   } = useBudget();
   
   const { 
@@ -28,6 +29,11 @@ const Belanja = () => {
     removeItem, 
     saveShoppingItems 
   } = useShoppingItems();
+
+  // Refresh budget data when component mounts to ensure latest data
+  useEffect(() => {
+    refreshBudgetData();
+  }, [refreshBudgetData]);
 
   // Calculate budget percentage used
   const budgetPercentageUsed = batasHarian > 0 ? Math.min(totalSpending / batasHarian * 100, 100) : 0;

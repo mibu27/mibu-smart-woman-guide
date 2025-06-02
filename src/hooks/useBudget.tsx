@@ -20,38 +20,38 @@ export const useBudget = () => {
   };
 
   // Fetch user's budget settings on component mount
-  useEffect(() => {
-    const fetchBudgetData = async () => {
-      try {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
+  const fetchBudgetData = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Fetch budget settings
+        const { data: budgetData, error: budgetError } = await supabase
+          .from('budget_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
         
-        if (user) {
-          // Fetch budget settings
-          const { data: budgetData, error: budgetError } = await supabase
-            .from('budget_settings')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-          
-          if (budgetError && budgetError.code !== 'PGRST116') {
-            // PGRST116 means no rows returned
-            throw budgetError;
-          }
-          
-          if (budgetData) {
-            setGajiBulanan(budgetData.monthly_salary || 0);
-            setBelanjaWajib(budgetData.fixed_expenses || 0);
-          }
+        if (budgetError && budgetError.code !== 'PGRST116') {
+          // PGRST116 means no rows returned
+          throw budgetError;
         }
-      } catch (error) {
-        console.error('Error fetching budget data:', error);
-        toast.error("Gagal memuat data anggaran");
-      } finally {
-        setLoading(false);
+        
+        if (budgetData) {
+          setGajiBulanan(budgetData.monthly_salary || 0);
+          setBelanjaWajib(budgetData.fixed_expenses || 0);
+        }
       }
-    };
-    
+    } catch (error) {
+      console.error('Error fetching budget data:', error);
+      toast.error("Gagal memuat data anggaran");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchBudgetData();
   }, []);
 
@@ -65,12 +65,18 @@ export const useBudget = () => {
     }
   }, [gajiBulanan, belanjaWajib]);
 
+  // Add refresh function to be called when data changes
+  const refreshBudgetData = () => {
+    fetchBudgetData();
+  };
+
   return { 
     gajiBulanan, 
     belanjaWajib, 
     batasHarian, 
     loading, 
     formatIDR, 
-    parseIDR 
+    parseIDR,
+    refreshBudgetData
   };
 };
