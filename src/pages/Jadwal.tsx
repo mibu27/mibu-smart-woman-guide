@@ -8,75 +8,53 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, CalendarIcon, Clock, MapPin } from 'lucide-react';
-
-interface TodoItem {
-  id: number;
-  text: string;
-  completed: boolean;
-}
-
-interface ImportantEvent {
-  id: number;
-  text: string;
-  location: string;
-  date: Date;
-}
+import { Check, CalendarIcon, MapPin, Loader2 } from 'lucide-react';
+import { useJadwal } from '@/hooks/useJadwal';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Jadwal = () => {
+  const { user } = useAuth();
+  const { 
+    todoList, 
+    importantEvents, 
+    isLoading,
+    addTodo,
+    toggleTodo,
+    removeTodo,
+    addEvent,
+    removeEvent,
+    updateEventDate
+  } = useJadwal();
+
   const [date, setDate] = useState<Date>(new Date());
-  const [todoList, setTodoList] = useState<TodoItem[]>([]);
-  const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([]);
   const [newTodo, setNewTodo] = useState("");
   const [newEvent, setNewEvent] = useState({ 
     text: "", 
     location: "",
     date: new Date()
   });
+
+  if (!user) {
+    return (
+      <MainLayout title="Jadwal">
+        <div className="text-center py-8">
+          <p className="text-gray-500">Silakan login untuk menggunakan fitur jadwal</p>
+        </div>
+      </MainLayout>
+    );
+  }
   
   const handleAddTodo = () => {
     if (!newTodo.trim()) return;
-    
-    setTodoList([...todoList, {
-      id: Date.now(),
-      text: newTodo,
-      completed: false
-    }]);
+    addTodo(newTodo);
     setNewTodo("");
-  };
-  
-  const handleToggleTodo = (id: number) => {
-    setTodoList(todoList.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
-  };
-  
-  const handleRemoveTodo = (id: number) => {
-    setTodoList(todoList.filter(todo => todo.id !== id));
   };
   
   const handleAddEvent = () => {
     if (!newEvent.text.trim() || !newEvent.location.trim()) return;
     
-    setImportantEvents([...importantEvents, {
-      id: Date.now(),
-      text: newEvent.text,
-      location: newEvent.location,
-      date: newEvent.date
-    }]);
+    addEvent(newEvent.text, newEvent.location, newEvent.date);
     setNewEvent({ text: "", location: "", date: new Date() });
-  };
-  
-  const handleRemoveEvent = (id: number) => {
-    setImportantEvents(importantEvents.filter(event => event.id !== id));
-  };
-  
-  const handleEventDateChange = (date: Date | undefined, id: number) => {
-    if (!date) return;
-    
-    setImportantEvents(importantEvents.map(event => 
-      event.id === id ? { ...event, date } : event
-    ));
   };
 
   // Function to check if a date has events
@@ -106,7 +84,7 @@ const Jadwal = () => {
       <div className="space-y-6">
         <section className="border border-gray-200 rounded-lg p-4">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-medium">To Do List</h2>
+            <h2 className="text-lg font-medium">To Do List Hari Ini</h2>
             <div className="text-sm text-mibu-purple">
               {format(date, "EEEE, d MMMM yyyy", { locale: idLocale })}
             </div>
@@ -125,35 +103,48 @@ const Jadwal = () => {
                     }
                   }}
                 />
-                <Button onClick={handleAddTodo} className="bg-mibu-purple hover:bg-mibu-darkpurple">Tambah</Button>
+                <Button 
+                  onClick={handleAddTodo} 
+                  className="bg-mibu-purple hover:bg-mibu-darkpurple"
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Tambah'}
+                </Button>
               </div>
               
-              <ul className="space-y-2">
-                {todoList.map((todo) => (
-                  <li key={todo.id} className="flex items-center gap-3">
-                    <div
-                      onClick={() => handleToggleTodo(todo.id)} 
-                      className={`cursor-pointer w-5 h-5 rounded-full flex items-center justify-center border ${todo.completed ? 'bg-mibu-purple border-mibu-purple' : 'border-gray-300'}`}
-                    >
-                      {todo.completed && <Check size={12} className="text-white" />}
+              {isLoading ? (
+                <div className="text-center py-4 text-gray-500">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                  <p className="mt-2">Memuat data...</p>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {todoList.map((todo) => (
+                    <li key={todo.id} className="flex items-center gap-3">
+                      <div
+                        onClick={() => toggleTodo(todo.id)} 
+                        className={`cursor-pointer w-5 h-5 rounded-full flex items-center justify-center border ${todo.completed ? 'bg-mibu-purple border-mibu-purple' : 'border-gray-300'}`}
+                      >
+                        {todo.completed && <Check size={12} className="text-white" />}
+                      </div>
+                      <span className={`flex-1 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
+                        {todo.text}
+                      </span>
+                      <button 
+                        onClick={() => removeTodo(todo.id)}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        Hapus
+                      </button>
+                    </li>
+                  ))}
+                  {todoList.length === 0 && (
+                    <div className="text-center py-2 text-gray-500">
+                      Tidak ada kegiatan hari ini
                     </div>
-                    <span className={`flex-1 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
-                      {todo.text}
-                    </span>
-                    <button 
-                      onClick={() => handleRemoveTodo(todo.id)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      Hapus
-                    </button>
-                  </li>
-                ))}
-                {todoList.length === 0 && (
-                  <div className="text-center py-2 text-gray-500">
-                    Tidak ada kegiatan
-                  </div>
-                )}
-              </ul>
+                  )}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </section>
@@ -195,52 +186,68 @@ const Jadwal = () => {
                   </Popover>
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={handleAddEvent} className="bg-mibu-purple hover:bg-mibu-darkpurple">Tambah Acara</Button>
+                  <Button 
+                    onClick={handleAddEvent} 
+                    className="bg-mibu-purple hover:bg-mibu-darkpurple"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Tambah Acara'}
+                  </Button>
                 </div>
               </div>
               
-              <ul className="space-y-3">
-                {importantEvents.map((event) => (
-                  <li key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
-                    <div className="flex justify-between">
-                      <div className="font-medium">{event.text}</div>
-                      <button 
-                        onClick={() => handleRemoveEvent(event.id)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        Hapus
-                      </button>
+              {isLoading ? (
+                <div className="text-center py-4 text-gray-500">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                  <p className="mt-2">Memuat data...</p>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {importantEvents.map((event) => (
+                    <li key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
+                      <div className="flex justify-between">
+                        <div className="font-medium">{event.text}</div>
+                        <button 
+                          onClick={() => removeEvent(event.id)}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                      <div className="text-sm text-mibu-gray flex items-center mt-1">
+                        <MapPin size={14} className="mr-1" /> {event.location}
+                      </div>
+                      <div className="flex items-center mt-2 text-sm text-mibu-gray">
+                        <CalendarIcon size={14} className="mr-1" />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="text-left hover:text-mibu-purple">
+                              {format(event.date, "d MMMM yyyy", { locale: idLocale })}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={event.date}
+                              onSelect={(date) => date && updateEventDate(event.id, date)}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        {event.time && (
+                          <span className="ml-2">• {event.time}</span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                  {importantEvents.length === 0 && (
+                    <div className="text-center py-2 text-gray-500">
+                      Tidak ada acara penting
                     </div>
-                    <div className="text-sm text-mibu-gray flex items-center mt-1">
-                      <MapPin size={14} className="mr-1" /> {event.location}
-                    </div>
-                    <div className="flex items-center mt-2 text-sm text-mibu-gray">
-                      <CalendarIcon size={14} className="mr-1" />
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="text-left hover:text-mibu-purple">
-                            {format(event.date, "d MMMM yyyy", { locale: idLocale })}
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={event.date}
-                            onSelect={(date) => handleEventDateChange(date, event.id)}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </li>
-                ))}
-                {importantEvents.length === 0 && (
-                  <div className="text-center py-2 text-gray-500">
-                    Tidak ada acara penting
-                  </div>
-                )}
-              </ul>
+                  )}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </section>
