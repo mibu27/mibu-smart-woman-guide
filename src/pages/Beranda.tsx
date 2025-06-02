@@ -1,49 +1,38 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users, Loader2, RefreshCw
-} from 'lucide-react';
+import { Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-
-const shortcuts = [
-  {
-    icon: <Wallet size={20} className="text-mibu-purple mb-1" />,
-    label: "Gajiku",
-    to: "/belanja/gaji" 
-  },
-  {
-    icon: <ShoppingBag size={20} className="text-mibu-purple mb-1" />,
-    label: "BelanjaKu",
-    to: "/belanja"
-  },
-  {
-    icon: <Calendar size={20} className="text-mibu-purple mb-1" />,
-    label: "JadwalKu",
-    to: "/jadwal"
-  },
-  {
-    icon: <Heart size={20} className="text-mibu-purple mb-1" />,
-    label: "Selfcare",
-    to: "/diaryku/selfcare"
-  },
-  {
-    icon: <BookOpen size={20} className="text-mibu-purple mb-1" />,
-    label: "Diaryku",
-    to: "/diaryku"
-  },
-  {
-    icon: <Users size={20} className="text-mibu-purple mb-1" />,
-    label: "Komuniku",
-    to: "/komunitas"
-  }
-];
+const shortcuts = [{
+  icon: <Wallet size={20} className="text-mibu-purple mb-1" />,
+  label: "Gajiku",
+  to: "/belanja/gaji"
+}, {
+  icon: <ShoppingBag size={20} className="text-mibu-purple mb-1" />,
+  label: "BelanjaKu",
+  to: "/belanja"
+}, {
+  icon: <Calendar size={20} className="text-mibu-purple mb-1" />,
+  label: "JadwalKu",
+  to: "/jadwal"
+}, {
+  icon: <Heart size={20} className="text-mibu-purple mb-1" />,
+  label: "Selfcare",
+  to: "/diaryku/selfcare"
+}, {
+  icon: <BookOpen size={20} className="text-mibu-purple mb-1" />,
+  label: "Diaryku",
+  to: "/diaryku"
+}, {
+  icon: <Users size={20} className="text-mibu-purple mb-1" />,
+  label: "Komuniku",
+  to: "/komunitas"
+}];
 
 // TypeScript interfaces for our data types
 interface TodoItem {
@@ -52,7 +41,6 @@ interface TodoItem {
   completed: boolean;
   date: string;
 }
-
 interface ImportantEvent {
   id: string;
   title: string;
@@ -60,40 +48,35 @@ interface ImportantEvent {
   date: string;
   time: string;
 }
-
 interface ShoppingItem {
   id: string;
   name: string;
   price: number;
   quantity: number;
 }
-
 const Beranda = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
   const fetchData = async () => {
     if (!user) {
       setIsLoading(false);
       return;
     }
-
     try {
       const startTime = Date.now();
-      
+
       // Fetch today's tasks
       const today = new Date().toISOString().split('T')[0];
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .limit(3);
-
+      const {
+        data: tasksData,
+        error: tasksError
+      } = await supabase.from('tasks').select('*').eq('user_id', user.id).eq('date', today).limit(3);
       if (tasksError) {
         console.error('Error fetching tasks:', tasksError);
       } else if (tasksData) {
@@ -108,16 +91,12 @@ const Beranda = () => {
       // Fetch upcoming events (next 7 days)
       const nextWeek = new Date();
       nextWeek.setDate(nextWeek.getDate() + 7);
-      
-      const { data: eventsData, error: eventsError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('date', today)
-        .lte('date', nextWeek.toISOString().split('T')[0])
-        .order('date', { ascending: true })
-        .limit(3);
-
+      const {
+        data: eventsData,
+        error: eventsError
+      } = await supabase.from('events').select('*').eq('user_id', user.id).gte('date', today).lte('date', nextWeek.toISOString().split('T')[0]).order('date', {
+        ascending: true
+      }).limit(3);
       if (eventsError) {
         console.error('Error fetching events:', eventsError);
       } else if (eventsData) {
@@ -131,13 +110,12 @@ const Beranda = () => {
       }
 
       // Fetch recent shopping items
-      const { data: shoppingData, error: shoppingError } = await supabase
-        .from('shopping_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
+      const {
+        data: shoppingData,
+        error: shoppingError
+      } = await supabase.from('shopping_items').select('*').eq('user_id', user.id).order('created_at', {
+        ascending: false
+      }).limit(3);
       if (shoppingError) {
         console.error('Error fetching shopping items:', shoppingError);
       } else if (shoppingData) {
@@ -155,7 +133,6 @@ const Beranda = () => {
       if (elapsedTime < minLoadTime) {
         await new Promise(resolve => setTimeout(resolve, minLoadTime - elapsedTime));
       }
-
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -163,12 +140,10 @@ const Beranda = () => {
       setRefreshing(false);
     }
   };
-
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchData();
   };
-  
   useEffect(() => {
     fetchData();
   }, [user]);
@@ -181,36 +156,25 @@ const Beranda = () => {
   // Format date for display
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', { 
-      weekday: 'short', 
-      day: 'numeric', 
-      month: 'short' 
+    return date.toLocaleDateString('id-ID', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
     });
   };
-
   if (!user) {
-    return (
-      <MainLayout title="Beranda">
+    return <MainLayout title="Beranda">
         <div className="text-center py-8">
           <p className="text-gray-500">Silakan login untuk menggunakan fitur aplikasi</p>
         </div>
-      </MainLayout>
-    );
+      </MainLayout>;
   }
-  
-  return (
-    <MainLayout title="Beranda">
+  return <MainLayout title="Beranda">
       <div className="space-y-6">
         {/* Header with refresh button */}
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-semibold">Selamat datang!</h1>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="text-mibu-purple border-mibu-purple"
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-mibu-purple border-mibu-purple">
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -219,38 +183,28 @@ const Beranda = () => {
         {/* Shortcuts */}
         <section className="border border-gray-200 rounded-lg p-3">
           <div className="grid grid-cols-3 gap-3 mt-2">
-            {shortcuts.map((item, index) => (
-              <Link 
-                key={index} 
-                to={item.to}
-                className="mibu-shortcut border border-gray-200"
-              >
+            {shortcuts.map((item, index) => <Link key={index} to={item.to} className="mibu-shortcut border border-gray-200">
                 {item.icon}
                 <span className="text-sm mt-1">{item.label}</span>
-              </Link>
-            ))}
+              </Link>)}
           </div>
         </section>
 
         {/* Shopping List */}
         <section className="border border-gray-200 rounded-lg p-3">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-medium">Daftar Belanja</h2>
+            <h2 className="text-lg font-medium">Rencana Belanja Hari Ini</h2>
             <Link to="/belanja" className="text-sm text-mibu-purple hover:underline">
               Lihat Semua
             </Link>
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? (
-                <div className="text-center py-4 text-gray-500">
+              {isLoading ? <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat daftar belanja...</p>
-                </div>
-              ) : shoppingList.length > 0 ? (
-                <div className="space-y-2">
-                  {shoppingList.map(item => (
-                    <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                </div> : shoppingList.length > 0 ? <div className="space-y-2">
+                  {shoppingList.map(item => <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-b-0">
                       <span className="font-medium">{item.name}</span>
                       <div className="text-right">
                         <div className="text-sm text-mibu-purple font-medium">
@@ -260,18 +214,14 @@ const Beranda = () => {
                           Qty: {item.quantity}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
+                    </div>)}
+                </div> : <div className="text-center py-8 text-gray-500">
                   Belum ada daftar belanja. 
-                  <br/>
+                  <br />
                   <Link to="/belanja" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan item belanja
                   </Link>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
         </section>
@@ -286,31 +236,23 @@ const Beranda = () => {
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? (
-                <div className="text-center py-4 text-gray-500">
+              {isLoading ? <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat tugas hari ini...</p>
-                </div>
-              ) : todoItems.length > 0 ? (
-                <div className="space-y-2">
-                  {todoItems.map(todo => (
-                    <div key={todo.id} className="flex items-center py-2">
+                </div> : todoItems.length > 0 ? <div className="space-y-2">
+                  {todoItems.map(todo => <div key={todo.id} className="flex items-center py-2">
                       <div className={`w-4 h-4 rounded-full border-2 mr-3 ${todo.completed ? 'bg-mibu-purple border-mibu-purple' : 'border-gray-300'}`}></div>
                       <span className={`${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                         {todo.title}
                       </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
+                    </div>)}
+                </div> : <div className="text-center py-8 text-gray-500">
                   Tidak ada tugas untuk hari ini.
-                  <br/>
+                  <br />
                   <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan tugas baru
                   </Link>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
         </section>
@@ -325,47 +267,33 @@ const Beranda = () => {
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? (
-                <div className="text-center py-4 text-gray-500">
+              {isLoading ? <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat acara penting...</p>
-                </div>
-              ) : importantEvents.length > 0 ? (
-                <div className="space-y-3">
-                  {importantEvents.map(event => (
-                    <div key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
+                </div> : importantEvents.length > 0 ? <div className="space-y-3">
+                  {importantEvents.map(event => <div key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
                       <div className="font-medium text-gray-800">{event.title}</div>
-                      {event.description && (
-                        <div className="text-sm text-gray-600 mt-1">{event.description}</div>
-                      )}
+                      {event.description && <div className="text-sm text-gray-600 mt-1">{event.description}</div>}
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-sm text-mibu-purple">
                           {formatDate(event.date)}
                         </span>
-                        {event.time && (
-                          <span className="text-sm text-gray-500">
+                        {event.time && <span className="text-sm text-gray-500">
                             {event.time}
-                          </span>
-                        )}
+                          </span>}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
+                    </div>)}
+                </div> : <div className="text-center py-8 text-gray-500">
                   Belum ada acara penting minggu ini.
-                  <br/>
+                  <br />
                   <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan acara baru
                   </Link>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
         </section>
       </div>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default Beranda;
