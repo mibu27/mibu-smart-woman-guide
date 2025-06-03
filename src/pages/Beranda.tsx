@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users, Loader2, RefreshCw } from 'lucide-react';
+import { Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from "@/components/ui/progress";
@@ -63,20 +63,26 @@ const Beranda = () => {
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [budgetInfo, setBudgetInfo] = useState({ batasHarian: 0, totalSpending: 0 });
+
   const fetchData = async () => {
     if (!user) {
       setIsLoading(false);
       return;
     }
+
     try {
       const startTime = Date.now();
 
       // Fetch today's tasks
       const today = new Date().toISOString().split('T')[0];
-      const {
-        data: tasksData,
-        error: tasksError
-      } = await supabase.from('tasks').select('*').eq('user_id', user.id).eq('date', today).limit(3);
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .limit(3);
+
       if (tasksError) {
         console.error('Error fetching tasks:', tasksError);
       } else if (tasksData) {
@@ -91,12 +97,15 @@ const Beranda = () => {
       // Fetch upcoming events (next 7 days)
       const nextWeek = new Date();
       nextWeek.setDate(nextWeek.getDate() + 7);
-      const {
-        data: eventsData,
-        error: eventsError
-      } = await supabase.from('events').select('*').eq('user_id', user.id).gte('date', today).lte('date', nextWeek.toISOString().split('T')[0]).order('date', {
-        ascending: true
-      }).limit(3);
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', today)
+        .lte('date', nextWeek.toISOString().split('T')[0])
+        .order('date', { ascending: true })
+        .limit(3);
+
       if (eventsError) {
         console.error('Error fetching events:', eventsError);
       } else if (eventsData) {
@@ -110,12 +119,13 @@ const Beranda = () => {
       }
 
       // Fetch recent shopping items
-      const {
-        data: shoppingData,
-        error: shoppingError
-      } = await supabase.from('shopping_items').select('*').eq('user_id', user.id).order('created_at', {
-        ascending: false
-      }).limit(3);
+      const { data: shoppingData, error: shoppingError } = await supabase
+        .from('shopping_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
       if (shoppingError) {
         console.error('Error fetching shopping items:', shoppingError);
       } else if (shoppingData) {
@@ -125,6 +135,25 @@ const Beranda = () => {
           price: Number(item.price),
           quantity: item.quantity
         })));
+      }
+
+      // Fetch budget information
+      const { data: budgetData, error: budgetError } = await supabase
+        .from('budget_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!budgetError && budgetData) {
+        const currentDate = new Date();
+        const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+        const dailyLimit = (budgetData.monthly_salary - (budgetData.fixed_expenses || 0)) / daysInMonth;
+        const batasHarian = Math.max(0, dailyLimit);
+        
+        // Calculate total spending (sum of shopping items)
+        const totalSpending = shoppingData ? shoppingData.reduce((sum: number, item: any) => sum + Number(item.price), 0) : 0;
+        
+        setBudgetInfo({ batasHarian, totalSpending });
       }
 
       // Ensure minimum loading time for better UX
@@ -169,16 +198,40 @@ const Beranda = () => {
         </div>
       </MainLayout>;
   }
+
+  // Check if over budget
+  const isOverBudget = budgetInfo.batasHarian > 0 && budgetInfo.totalSpending > budgetInfo.batasHarian;
+
   return <MainLayout title="Beranda">
       <div className="space-y-6">
         {/* Header with refresh button */}
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-semibold">Selamat datang!</h1>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-mibu-purple border-mibu-purple">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={refreshing} 
+            className="text-mibu-purple border-mibu-purple"
+          >
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
+
+        {/* Budget Alert - Show if over budget */}
+        {isOverBudget && (
+          <Alert variant="destructive" className="bg-red-50 text-red-800 border-red-200">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Atur rencanamu kembali !</strong> Daftar ini melebihi anggaran tetap harianmu. INI BOROS
+              <br />
+              <span className="text-sm">
+                Total belanja: Rp {formatIDR(budgetInfo.totalSpending)} dari batas Rp {formatIDR(budgetInfo.batasHarian)}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Shortcuts */}
         <section className="border border-gray-200 rounded-lg p-3">
@@ -204,8 +257,11 @@ const Beranda = () => {
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat daftar belanja...</p>
                 </div> : shoppingList.length > 0 ? <div className="space-y-2">
-                  {shoppingList.map(item => <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-b-0">
-                      <span className="font-medium">{item.name}</span>
+                  {shoppingList.map(item => <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded border border-gray-300"></div>
+                        <span className="font-medium">{item.name}</span>
+                      </div>
                       <div className="text-right">
                         <div className="text-sm text-mibu-purple font-medium">
                           Rp {formatIDR(item.price)}

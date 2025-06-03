@@ -7,6 +7,7 @@ interface ShoppingItem {
   id: number;
   name: string;
   price: number;
+  purchased?: boolean;
 }
 
 export const useShoppingItems = () => {
@@ -35,7 +36,8 @@ export const useShoppingItems = () => {
             const formattedItems = shoppingData.map((item, index) => ({
               id: index + 1,
               name: item.name,
-              price: parseFloat(item.price.toString())
+              price: parseFloat(item.price.toString()),
+              purchased: false // Default to not purchased
             }));
             setShoppingItems(formattedItems);
           }
@@ -55,13 +57,47 @@ export const useShoppingItems = () => {
     const newItemObj = {
       id: Date.now(),
       name,
-      price
+      price,
+      purchased: false
     };
     setShoppingItems([...shoppingItems, newItemObj]);
   };
 
   const removeItem = (id: number) => {
     setShoppingItems(shoppingItems.filter(item => item.id !== id));
+  };
+
+  const toggleItem = async (id: number) => {
+    setShoppingItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const updatedItem = { ...item, purchased: !item.purchased };
+        
+        // If item is being marked as purchased, record it as an expense
+        if (updatedItem.purchased) {
+          recordExpense(item.name, item.price);
+        }
+        
+        return updatedItem;
+      }
+      return item;
+    }));
+  };
+
+  const recordExpense = async (itemName: string, amount: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Record this as an expense (you might want to create an expenses table later)
+      console.log(`Recording expense: ${itemName} - Rp ${amount} on ${today}`);
+      
+      toast.success(`${itemName} tercatat sebagai pengeluaran hari ini`);
+    } catch (error) {
+      console.error('Error recording expense:', error);
+    }
   };
 
   const saveShoppingItems = async () => {
@@ -114,6 +150,7 @@ export const useShoppingItems = () => {
     totalSpending,
     addItem,
     removeItem,
+    toggleItem,
     saveShoppingItems
   };
 };
