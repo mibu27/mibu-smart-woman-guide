@@ -8,6 +8,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+
+// TypeScript interfaces for our data types
+interface TodoItem {
+  id: string;
+  title: string;
+  completed: boolean;
+  date: string;
+}
+interface ImportantEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+}
+interface ShoppingItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
 const shortcuts = [{
   icon: <Wallet size={20} className="text-mibu-purple mb-1" />,
   label: "Gajiku",
@@ -34,26 +55,6 @@ const shortcuts = [{
   to: "/komunitas"
 }];
 
-// TypeScript interfaces for our data types
-interface TodoItem {
-  id: string;
-  title: string;
-  completed: boolean;
-  date: string;
-}
-interface ImportantEvent {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-}
-interface ShoppingItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
 const Beranda = () => {
   const {
     user
@@ -73,9 +74,9 @@ const Beranda = () => {
 
     try {
       const startTime = Date.now();
+      const today = new Date().toISOString().split('T')[0];
 
       // Fetch today's tasks
-      const today = new Date().toISOString().split('T')[0];
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
@@ -137,7 +138,7 @@ const Beranda = () => {
         })));
       }
 
-      // Fetch budget information
+      // Fetch budget information and actual expenses
       const { data: budgetData, error: budgetError } = await supabase
         .from('budget_settings')
         .select('*')
@@ -150,8 +151,17 @@ const Beranda = () => {
         const dailyLimit = (budgetData.monthly_salary - (budgetData.fixed_expenses || 0)) / daysInMonth;
         const batasHarian = Math.max(0, dailyLimit);
         
-        // Calculate total spending (sum of shopping items)
-        const totalSpending = shoppingData ? shoppingData.reduce((sum: number, item: any) => sum + Number(item.price), 0) : 0;
+        // Fetch today's actual expenses from expenses table
+        const { data: expensesData, error: expensesError } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('user_id', user.id)
+          .eq('date', today);
+
+        let totalSpending = 0;
+        if (!expensesError && expensesData) {
+          totalSpending = expensesData.reduce((sum, expense) => sum + Number(expense.amount), 0);
+        }
         
         setBudgetInfo({ batasHarian, totalSpending });
       }
@@ -236,10 +246,12 @@ const Beranda = () => {
         {/* Shortcuts */}
         <section className="border border-gray-200 rounded-lg p-3">
           <div className="grid grid-cols-3 gap-3 mt-2">
-            {shortcuts.map((item, index) => <Link key={index} to={item.to} className="mibu-shortcut border border-gray-200">
+            {shortcuts.map((item, index) => (
+              <Link key={index} to={item.to} className="mibu-shortcut border border-gray-200">
                 {item.icon}
                 <span className="text-sm mt-1">{item.label}</span>
-              </Link>)}
+              </Link>
+            ))}
           </div>
         </section>
 
@@ -253,11 +265,15 @@ const Beranda = () => {
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? <div className="text-center py-4 text-gray-500">
+              {isLoading ? (
+                <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat daftar belanja...</p>
-                </div> : shoppingList.length > 0 ? <div className="space-y-2">
-                  {shoppingList.map(item => <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                </div>
+              ) : shoppingList.length > 0 ? (
+                <div className="space-y-2">
+                  {shoppingList.map(item => (
+                    <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
                       <div className="flex items-center gap-3">
                         <div className="w-4 h-4 rounded border border-gray-300"></div>
                         <span className="font-medium">{item.name}</span>
@@ -270,14 +286,18 @@ const Beranda = () => {
                           Qty: {item.quantity}
                         </div>
                       </div>
-                    </div>)}
-                </div> : <div className="text-center py-8 text-gray-500">
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
                   Belum ada daftar belanja. 
                   <br />
                   <Link to="/belanja" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan item belanja
                   </Link>
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
