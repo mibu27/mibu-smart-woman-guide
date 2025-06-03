@@ -1,13 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Wallet, ShoppingBag, Calendar, Heart, BookOpen, Users, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { BudgetAlert } from '@/components/beranda/BudgetAlert';
+import { ShortcutsSection } from '@/components/beranda/ShortcutsSection';
 
 // TypeScript interfaces for our data types
 interface TodoItem {
@@ -29,36 +30,9 @@ interface ShoppingItem {
   price: number;
   quantity: number;
 }
-const shortcuts = [{
-  icon: <Wallet size={20} className="text-mibu-purple mb-1" />,
-  label: "Gajiku",
-  to: "/belanja/gaji"
-}, {
-  icon: <ShoppingBag size={20} className="text-mibu-purple mb-1" />,
-  label: "BelanjaKu",
-  to: "/belanja"
-}, {
-  icon: <Calendar size={20} className="text-mibu-purple mb-1" />,
-  label: "JadwalKu",
-  to: "/jadwal"
-}, {
-  icon: <Heart size={20} className="text-mibu-purple mb-1" />,
-  label: "Selfcare",
-  to: "/diaryku/selfcare"
-}, {
-  icon: <BookOpen size={20} className="text-mibu-purple mb-1" />,
-  label: "Diaryku",
-  to: "/diaryku"
-}, {
-  icon: <Users size={20} className="text-mibu-purple mb-1" />,
-  label: "Komuniku",
-  to: "/komunitas"
-}];
 
 const Beranda = () => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
@@ -179,10 +153,12 @@ const Beranda = () => {
       setRefreshing(false);
     }
   };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchData();
   };
+
   useEffect(() => {
     fetchData();
   }, [user]);
@@ -201,18 +177,22 @@ const Beranda = () => {
       month: 'short'
     });
   };
+
   if (!user) {
-    return <MainLayout title="Beranda">
+    return (
+      <MainLayout title="Beranda">
         <div className="text-center py-8">
           <p className="text-gray-500">Silakan login untuk menggunakan fitur aplikasi</p>
         </div>
-      </MainLayout>;
+      </MainLayout>
+    );
   }
 
   // Check if over budget
   const isOverBudget = budgetInfo.batasHarian > 0 && budgetInfo.totalSpending > budgetInfo.batasHarian;
 
-  return <MainLayout title="Beranda">
+  return (
+    <MainLayout title="Beranda">
       <div className="space-y-6">
         {/* Header with refresh button */}
         <div className="flex justify-between items-center">
@@ -230,30 +210,15 @@ const Beranda = () => {
         </div>
 
         {/* Budget Alert - Show if over budget */}
-        {isOverBudget && (
-          <Alert variant="destructive" className="bg-red-50 text-red-800 border-red-200">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Atur rencanamu kembali !</strong> Daftar ini melebihi anggaran tetap harianmu. INI BOROS
-              <br />
-              <span className="text-sm">
-                Total belanja: Rp {formatIDR(budgetInfo.totalSpending)} dari batas Rp {formatIDR(budgetInfo.batasHarian)}
-              </span>
-            </AlertDescription>
-          </Alert>
-        )}
+        <BudgetAlert 
+          isOverBudget={isOverBudget}
+          totalSpending={budgetInfo.totalSpending}
+          batasHarian={budgetInfo.batasHarian}
+          formatIDR={formatIDR}
+        />
 
         {/* Shortcuts */}
-        <section className="border border-gray-200 rounded-lg p-3">
-          <div className="grid grid-cols-3 gap-3 mt-2">
-            {shortcuts.map((item, index) => (
-              <Link key={index} to={item.to} className="mibu-shortcut border border-gray-200">
-                {item.icon}
-                <span className="text-sm mt-1">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <ShortcutsSection />
 
         {/* Shopping List */}
         <section className="border border-gray-200 rounded-lg p-3">
@@ -312,23 +277,31 @@ const Beranda = () => {
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? <div className="text-center py-4 text-gray-500">
+              {isLoading ? (
+                <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat tugas hari ini...</p>
-                </div> : todoItems.length > 0 ? <div className="space-y-2">
-                  {todoItems.map(todo => <div key={todo.id} className="flex items-center py-2">
+                </div>
+              ) : todoItems.length > 0 ? (
+                <div className="space-y-2">
+                  {todoItems.map(todo => (
+                    <div key={todo.id} className="flex items-center py-2">
                       <div className={`w-4 h-4 rounded-full border-2 mr-3 ${todo.completed ? 'bg-mibu-purple border-mibu-purple' : 'border-gray-300'}`}></div>
                       <span className={`${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                         {todo.title}
                       </span>
-                    </div>)}
-                </div> : <div className="text-center py-8 text-gray-500">
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
                   Tidak ada tugas untuk hari ini.
                   <br />
                   <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan tugas baru
                   </Link>
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
@@ -343,33 +316,45 @@ const Beranda = () => {
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? <div className="text-center py-4 text-gray-500">
+              {isLoading ? (
+                <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat acara penting...</p>
-                </div> : importantEvents.length > 0 ? <div className="space-y-3">
-                  {importantEvents.map(event => <div key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
+                </div>
+              ) : importantEvents.length > 0 ? (
+                <div className="space-y-3">
+                  {importantEvents.map(event => (
+                    <div key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
                       <div className="font-medium text-gray-800">{event.title}</div>
                       {event.description && <div className="text-sm text-gray-600 mt-1">{event.description}</div>}
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-sm text-mibu-purple">
                           {formatDate(event.date)}
                         </span>
-                        {event.time && <span className="text-sm text-gray-500">
+                        {event.time && (
+                          <span className="text-sm text-gray-500">
                             {event.time}
-                          </span>}
+                          </span>
+                        )}
                       </div>
-                    </div>)}
-                </div> : <div className="text-center py-8 text-gray-500">
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
                   Belum ada acara penting minggu ini.
                   <br />
                   <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan acara baru
                   </Link>
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
       </div>
-    </MainLayout>;
+    </MainLayout>
+  );
 };
+
 export default Beranda;
