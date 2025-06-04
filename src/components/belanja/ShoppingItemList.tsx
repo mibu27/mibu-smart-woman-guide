@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface ShoppingItem {
-  id: number;
+  id: string; // Changed from number to string for consistency
   name: string;
   price: number;
   purchased?: boolean;
@@ -13,8 +13,8 @@ interface ShoppingItem {
 
 interface ShoppingItemListProps {
   items: ShoppingItem[];
-  onRemoveItem: (id: number) => void;
-  onToggleItem: (id: number) => void;
+  onRemoveItem: (id: string) => void; // Changed from number to string
+  onToggleItem: (id: string) => void; // Changed from number to string
   onSaveItems: () => void;
   totalSpending: number;
   isOverBudget: boolean;

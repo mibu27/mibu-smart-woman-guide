@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BudgetAlert } from '@/components/beranda/BudgetAlert';
 import { ShortcutsSection } from '@/components/beranda/ShortcutsSection';
 import { useExpenseRecording } from '@/hooks/useExpenseRecording';
+import { useCentralizedBudget } from '@/hooks/useCentralizedBudget';
 
 // TypeScript interfaces for our data types
 interface TodoItem {
@@ -39,15 +40,20 @@ interface ShoppingItem {
 const Beranda = () => {
   const { user } = useAuth();
   const { recordExpense, removeExpense } = useExpenseRecording();
+  const { 
+    batasHarian, 
+    totalSpending, 
+    isOverBudget, 
+    formatIDR, 
+    refreshBudgetData,
+    loading: budgetLoading 
+  } = useCentralizedBudget();
+  
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [budgetInfo, setBudgetInfo] = useState({
-    batasHarian: 0,
-    totalSpending: 0
-  });
 
   const fetchData = async () => {
     if (!user) {
@@ -58,7 +64,7 @@ const Beranda = () => {
       const today = new Date().toISOString().split('T')[0];
 
       // Use Promise.all for parallel data fetching to improve performance
-      const [tasksResult, eventsResult, shoppingResult, budgetResult, expensesResult] = await Promise.all([
+      const [tasksResult, eventsResult, shoppingResult] = await Promise.all([
         // Fetch today's tasks
         supabase.from('tasks').select('id, title, completed, date').eq('user_id', user.id).eq('date', today).limit(3),
         
@@ -70,13 +76,7 @@ const Beranda = () => {
         })(),
         
         // Fetch recent shopping items
-        supabase.from('shopping_items').select('id, name, price, quantity').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
-        
-        // Fetch budget information
-        supabase.from('budget_settings').select('monthly_salary, fixed_expenses').eq('user_id', user.id).maybeSingle(),
-        
-        // Fetch today's expenses
-        supabase.from('expenses').select('amount').eq('user_id', user.id).eq('date', today)
+        supabase.from('shopping_items').select('id, name, price, quantity').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3)
       ]);
 
       // Process tasks
@@ -117,23 +117,6 @@ const Beranda = () => {
         })));
       }
 
-      // Process budget and expenses
-      let totalSpending = 0;
-      let batasHarian = 0;
-
-      if (!budgetResult.error && budgetResult.data) {
-        const currentDate = new Date();
-        const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-        const dailyLimit = (budgetResult.data.monthly_salary - (budgetResult.data.fixed_expenses || 0)) / daysInMonth;
-        batasHarian = Math.max(0, Math.round(dailyLimit)); // Round to whole number
-      }
-
-      if (!expensesResult.error && expensesResult.data) {
-        totalSpending = expensesResult.data.reduce((sum, expense) => sum + Number(expense.amount), 0);
-      }
-
-      setBudgetInfo({ batasHarian, totalSpending });
-
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -144,7 +127,7 @@ const Beranda = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchData();
+    await Promise.all([fetchData(), refreshBudgetData()]);
   };
 
   const toggleShoppingItem = async (itemId: string) => {
@@ -165,19 +148,18 @@ const Beranda = () => {
     // Record or remove expense based on new state
     if (newPurchasedState) {
       await recordExpense(item.name, item.price);
+      // Refresh budget data to reflect new expense
+      await refreshBudgetData();
     } else {
       await removeExpense(item.name, item.price);
+      // Refresh budget data to reflect removed expense
+      await refreshBudgetData();
     }
   };
 
   useEffect(() => {
     fetchData();
   }, [user]);
-
-  // Format for displaying IDR
-  const formatIDR = (value: number): string => {
-    return Math.round(value).toLocaleString('id-ID');
-  };
 
   // Format date for display
   const formatDate = (dateString: string): string => {
@@ -196,23 +178,20 @@ const Beranda = () => {
         </div>
       </MainLayout>;
   }
-
-  // Check if over budget
-  const isOverBudget = budgetInfo.batasHarian > 0 && budgetInfo.totalSpending > budgetInfo.batasHarian;
   
   return <MainLayout title="Beranda">
       <div className="space-y-6">
         {/* Header with refresh button */}
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-semibold">Selamat datang!</h1>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="text-mibu-purple border-mibu-purple">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing || budgetLoading} className="text-mibu-purple border-mibu-purple">
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
 
         {/* Budget Alert - Show if over budget */}
-        <BudgetAlert isOverBudget={isOverBudget} totalSpending={budgetInfo.totalSpending} batasHarian={budgetInfo.batasHarian} formatIDR={formatIDR} />
+        <BudgetAlert isOverBudget={isOverBudget} totalSpending={totalSpending} batasHarian={batasHarian} formatIDR={formatIDR} />
 
         {/* Shortcuts */}
         <ShortcutsSection />
@@ -227,11 +206,16 @@ const Beranda = () => {
           </div>
           
           {/* Daily Budget Limit Display */}
-          {budgetInfo.batasHarian > 0 && (
+          {batasHarian > 0 && (
             <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
               <span className="text-blue-800">
-                Batas Belanja Harian: Rp {formatIDR(budgetInfo.batasHarian)}
+                Batas Belanja Harian: Rp {formatIDR(batasHarian)}
               </span>
+              {totalSpending > 0 && (
+                <span className={`ml-2 ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
+                  | Terpakai: Rp {formatIDR(totalSpending)}
+                </span>
+              )}
             </div>
           )}
           
