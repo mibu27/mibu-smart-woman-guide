@@ -14,42 +14,45 @@ export const useShoppingItemsData = () => {
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch shopping items on component mount
-  useEffect(() => {
-    const fetchShoppingItems = async () => {
-      try {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
+  // Optimized fetch function with better error handling
+  const fetchShoppingItems = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Optimized query - only select needed columns
+        const { data: shoppingData, error: shoppingError } = await supabase
+          .from('shopping_items')
+          .select('id, name, price, quantity')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
         
-        if (user) {
-          // Fetch shopping items
-          const { data: shoppingData, error: shoppingError } = await supabase
-            .from('shopping_items')
-            .select('*')
-            .eq('user_id', user.id);
-          
-          if (shoppingError) {
-            throw shoppingError;
-          }
-          
-          if (shoppingData && shoppingData.length > 0) {
-            const formattedItems = shoppingData.map((item, index) => ({
-              id: index + 1,
-              name: item.name,
-              price: parseFloat(item.price.toString()),
-              purchased: false // Default to not purchased
-            }));
-            setShoppingItems(formattedItems);
-          }
+        if (shoppingError) {
+          throw shoppingError;
         }
-      } catch (error) {
-        console.error('Error fetching shopping items:', error);
-        toast.error("Gagal memuat data belanja");
-      } finally {
-        setLoading(false);
+        
+        if (shoppingData && shoppingData.length > 0) {
+          const formattedItems = shoppingData.map((item, index) => ({
+            id: index + 1,
+            name: item.name,
+            price: parseFloat(item.price.toString()),
+            purchased: false // Default to not purchased
+          }));
+          setShoppingItems(formattedItems);
+        } else {
+          setShoppingItems([]);
+        }
       }
-    };
-    
+    } catch (error) {
+      console.error('Error fetching shopping items:', error);
+      toast.error("Gagal memuat data belanja");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchShoppingItems();
   }, []);
 
@@ -57,6 +60,7 @@ export const useShoppingItemsData = () => {
     shoppingItems,
     setShoppingItems,
     loading,
-    setLoading
+    setLoading,
+    refreshShoppingItems: fetchShoppingItems
   };
 };

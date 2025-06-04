@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -9,32 +9,31 @@ export const useBudget = () => {
   const [batasHarian, setBatasHarian] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
-  // Format for displaying IDR
-  const formatIDR = (value: number): string => {
-    return value.toLocaleString('id-ID');
-  };
+  // Format for displaying IDR - optimized to return whole numbers
+  const formatIDR = useCallback((value: number): string => {
+    return Math.round(value).toLocaleString('id-ID');
+  }, []);
 
   // Parse IDR formatted string back to number
-  const parseIDR = (value: string): number => {
+  const parseIDR = useCallback((value: string): number => {
     return Number(value.replace(/\./g, ''));
-  };
+  }, []);
 
-  // Fetch user's budget settings on component mount
-  const fetchBudgetData = async () => {
+  // Optimized fetch function
+  const fetchBudgetData = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // Fetch budget settings
+        // Optimized query - only select needed columns
         const { data: budgetData, error: budgetError } = await supabase
           .from('budget_settings')
-          .select('*')
+          .select('monthly_salary, fixed_expenses')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no data
         
         if (budgetError && budgetError.code !== 'PGRST116') {
-          // PGRST116 means no rows returned
           throw budgetError;
         }
         
@@ -49,26 +48,21 @@ export const useBudget = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchBudgetData();
-  }, []);
+  }, [fetchBudgetData]);
 
-  // Calculate daily spending limit
+  // Calculate daily spending limit - optimized with rounding
   useEffect(() => {
     if (gajiBulanan > 0) {
       const currentDate = new Date();
       const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
       const dailyLimit = (gajiBulanan - belanjaWajib) / daysInMonth;
-      setBatasHarian(Math.max(0, dailyLimit));
+      setBatasHarian(Math.max(0, Math.round(dailyLimit))); // Round to whole number
     }
   }, [gajiBulanan, belanjaWajib]);
-
-  // Add refresh function to be called when data changes
-  const refreshBudgetData = () => {
-    fetchBudgetData();
-  };
 
   return { 
     gajiBulanan, 
@@ -77,6 +71,6 @@ export const useBudget = () => {
     loading, 
     formatIDR, 
     parseIDR,
-    refreshBudgetData
+    refreshBudgetData: fetchBudgetData
   };
 };

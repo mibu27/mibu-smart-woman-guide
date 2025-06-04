@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
@@ -6,6 +7,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { BudgetAlert } from '@/components/beranda/BudgetAlert';
 import { ShortcutsSection } from '@/components/beranda/ShortcutsSection';
 
@@ -28,11 +30,10 @@ interface ShoppingItem {
   name: string;
   price: number;
   quantity: number;
+  purchased?: boolean;
 }
 const Beranda = () => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
@@ -42,24 +43,42 @@ const Beranda = () => {
     batasHarian: 0,
     totalSpending: 0
   });
+
   const fetchData = async () => {
     if (!user) {
       setIsLoading(false);
       return;
     }
     try {
-      const startTime = Date.now();
       const today = new Date().toISOString().split('T')[0];
 
-      // Fetch today's tasks
-      const {
-        data: tasksData,
-        error: tasksError
-      } = await supabase.from('tasks').select('*').eq('user_id', user.id).eq('date', today).limit(3);
-      if (tasksError) {
-        console.error('Error fetching tasks:', tasksError);
-      } else if (tasksData) {
-        setTodoItems(tasksData.map(task => ({
+      // Use Promise.all for parallel data fetching to improve performance
+      const [tasksResult, eventsResult, shoppingResult, budgetResult, expensesResult] = await Promise.all([
+        // Fetch today's tasks
+        supabase.from('tasks').select('id, title, completed, date').eq('user_id', user.id).eq('date', today).limit(3),
+        
+        // Fetch upcoming events (next 7 days)
+        (() => {
+          const nextWeek = new Date();
+          nextWeek.setDate(nextWeek.getDate() + 7);
+          return supabase.from('events').select('id, title, description, date, time').eq('user_id', user.id).gte('date', today).lte('date', nextWeek.toISOString().split('T')[0]).order('date', { ascending: true }).limit(3);
+        })(),
+        
+        // Fetch recent shopping items
+        supabase.from('shopping_items').select('id, name, price, quantity').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
+        
+        // Fetch budget information
+        supabase.from('budget_settings').select('monthly_salary, fixed_expenses').eq('user_id', user.id).single(),
+        
+        // Fetch today's expenses
+        supabase.from('expenses').select('amount').eq('user_id', user.id).eq('date', today)
+      ]);
+
+      // Process tasks
+      if (tasksResult.error) {
+        console.error('Error fetching tasks:', tasksResult.error);
+      } else if (tasksResult.data) {
+        setTodoItems(tasksResult.data.map(task => ({
           id: task.id,
           title: task.title,
           completed: task.completed,
@@ -67,19 +86,11 @@ const Beranda = () => {
         })));
       }
 
-      // Fetch upcoming events (next 7 days)
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      const {
-        data: eventsData,
-        error: eventsError
-      } = await supabase.from('events').select('*').eq('user_id', user.id).gte('date', today).lte('date', nextWeek.toISOString().split('T')[0]).order('date', {
-        ascending: true
-      }).limit(3);
-      if (eventsError) {
-        console.error('Error fetching events:', eventsError);
-      } else if (eventsData) {
-        setImportantEvents(eventsData.map(event => ({
+      // Process events
+      if (eventsResult.error) {
+        console.error('Error fetching events:', eventsResult.error);
+      } else if (eventsResult.data) {
+        setImportantEvents(eventsResult.data.map(event => ({
           id: event.id,
           title: event.title,
           description: event.description || '',
@@ -88,56 +99,36 @@ const Beranda = () => {
         })));
       }
 
-      // Fetch recent shopping items
-      const {
-        data: shoppingData,
-        error: shoppingError
-      } = await supabase.from('shopping_items').select('*').eq('user_id', user.id).order('created_at', {
-        ascending: false
-      }).limit(3);
-      if (shoppingError) {
-        console.error('Error fetching shopping items:', shoppingError);
-      } else if (shoppingData) {
-        setShoppingList(shoppingData.map(item => ({
+      // Process shopping items
+      if (shoppingResult.error) {
+        console.error('Error fetching shopping items:', shoppingResult.error);
+      } else if (shoppingResult.data) {
+        setShoppingList(shoppingResult.data.map(item => ({
           id: item.id,
           name: item.name,
           price: Number(item.price),
-          quantity: item.quantity
+          quantity: item.quantity,
+          purchased: false
         })));
       }
 
-      // Fetch budget information and actual expenses
-      const {
-        data: budgetData,
-        error: budgetError
-      } = await supabase.from('budget_settings').select('*').eq('user_id', user.id).single();
-      if (!budgetError && budgetData) {
+      // Process budget and expenses
+      let totalSpending = 0;
+      let batasHarian = 0;
+
+      if (!budgetResult.error && budgetResult.data) {
         const currentDate = new Date();
         const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-        const dailyLimit = (budgetData.monthly_salary - (budgetData.fixed_expenses || 0)) / daysInMonth;
-        const batasHarian = Math.max(0, dailyLimit);
-
-        // Fetch today's actual expenses from expenses table
-        const {
-          data: expensesData,
-          error: expensesError
-        } = await supabase.from('expenses').select('amount').eq('user_id', user.id).eq('date', today);
-        let totalSpending = 0;
-        if (!expensesError && expensesData) {
-          totalSpending = expensesData.reduce((sum, expense) => sum + Number(expense.amount), 0);
-        }
-        setBudgetInfo({
-          batasHarian,
-          totalSpending
-        });
+        const dailyLimit = (budgetResult.data.monthly_salary - (budgetResult.data.fixed_expenses || 0)) / daysInMonth;
+        batasHarian = Math.max(0, Math.round(dailyLimit)); // Round to whole number
       }
 
-      // Ensure minimum loading time for better UX
-      const minLoadTime = 500;
-      const elapsedTime = Date.now() - startTime;
-      if (elapsedTime < minLoadTime) {
-        await new Promise(resolve => setTimeout(resolve, minLoadTime - elapsedTime));
+      if (!expensesResult.error && expensesResult.data) {
+        totalSpending = expensesResult.data.reduce((sum, expense) => sum + Number(expense.amount), 0);
       }
+
+      setBudgetInfo({ batasHarian, totalSpending });
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -145,17 +136,29 @@ const Beranda = () => {
       setRefreshing(false);
     }
   };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchData();
   };
+
+  const toggleShoppingItem = async (itemId: string) => {
+    setShoppingList(prev => 
+      prev.map(item => 
+        item.id === itemId 
+          ? { ...item, purchased: !item.purchased }
+          : item
+      )
+    );
+  };
+
   useEffect(() => {
     fetchData();
   }, [user]);
 
   // Format for displaying IDR
   const formatIDR = (value: number): string => {
-    return value.toLocaleString('id-ID');
+    return Math.round(value).toLocaleString('id-ID');
   };
 
   // Format date for display
@@ -167,6 +170,7 @@ const Beranda = () => {
       month: 'short'
     });
   };
+
   if (!user) {
     return <MainLayout title="Beranda">
         <div className="text-center py-8">
@@ -177,6 +181,7 @@ const Beranda = () => {
 
   // Check if over budget
   const isOverBudget = budgetInfo.batasHarian > 0 && budgetInfo.totalSpending > budgetInfo.batasHarian;
+  
   return <MainLayout title="Beranda">
       <div className="space-y-6">
         {/* Header with refresh button */}
@@ -202,33 +207,57 @@ const Beranda = () => {
               Lihat Semua
             </Link>
           </div>
+          
+          {/* Daily Budget Limit Display */}
+          {budgetInfo.batasHarian > 0 && (
+            <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+              <span className="text-blue-800">
+                Batas Belanja Harian: Rp {formatIDR(budgetInfo.batasHarian)}
+              </span>
+            </div>
+          )}
+          
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? <div className="text-center py-4 text-gray-500">
+              {isLoading ? (
+                <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat daftar belanja...</p>
-                </div> : shoppingList.length > 0 ? <div className="space-y-2">
-                  {shoppingList.map(item => <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                </div>
+              ) : shoppingList.length > 0 ? (
+                <div className="space-y-2">
+                  {shoppingList.map(item => (
+                    <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded border border-gray-300"></div>
-                        <span className="font-medium">{item.name}</span>
+                        <Checkbox
+                          checked={item.purchased || false}
+                          onCheckedChange={() => toggleShoppingItem(item.id)}
+                          className="data-[state=checked]:bg-mibu-purple data-[state=checked]:border-mibu-purple"
+                        />
+                        <span className={`font-medium ${item.purchased ? 'line-through text-gray-400' : ''}`}>
+                          {item.name}
+                        </span>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm text-mibu-purple font-medium">
+                        <div className={`text-sm text-mibu-purple font-medium ${item.purchased ? 'line-through text-gray-400' : ''}`}>
                           Rp {formatIDR(item.price)}
                         </div>
                         <div className="text-xs text-gray-500">
                           Qty: {item.quantity}
                         </div>
                       </div>
-                    </div>)}
-                </div> : <div className="text-center py-8 text-gray-500">
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
                   Belum ada daftar belanja. 
                   <br />
                   <Link to="/belanja" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan item belanja
                   </Link>
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>

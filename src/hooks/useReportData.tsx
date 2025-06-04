@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -28,7 +28,7 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
   const [budgetInfo, setBudgetInfo] = useState({ monthly_salary: 0, fixed_expenses: 0 });
   const [loading, setLoading] = useState(false);
 
-  const fetchReportData = async () => {
+  const fetchReportData = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -48,22 +48,32 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
         startDate = new Date(now.getFullYear(), 0, 1);
       }
 
-      // Fetch expenses for the period
-      const { data: expenses, error: expensesError } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', now.toISOString().split('T')[0])
-        .order('date', { ascending: true });
+      // Use Promise.all for parallel fetching to improve performance
+      const [expensesResult, budgetResult] = await Promise.all([
+        // Fetch expenses for the period - only select needed columns
+        supabase
+          .from('expenses')
+          .select('date, amount, category, description')
+          .eq('user_id', user.id)
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', now.toISOString().split('T')[0])
+          .order('date', { ascending: true }),
+        
+        // Fetch budget settings - only select needed columns
+        supabase
+          .from('budget_settings')
+          .select('monthly_salary, fixed_expenses')
+          .eq('user_id', user.id)
+          .maybeSingle()
+      ]);
 
-      if (expensesError) {
-        console.error('Error fetching expenses:', expensesError);
+      if (expensesResult.error) {
+        console.error('Error fetching expenses:', expensesResult.error);
         return;
       }
 
-      if (expenses) {
-        setExpensesData(expenses.map(expense => ({
+      if (expensesResult.data) {
+        setExpensesData(expensesResult.data.map(expense => ({
           date: expense.date,
           amount: Number(expense.amount),
           category: expense.category || 'belanja',
@@ -71,13 +81,13 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
         })));
 
         // Calculate total expenses
-        const total = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+        const total = expensesResult.data.reduce((sum, expense) => sum + Number(expense.amount), 0);
         setTotalExpenses(total);
 
         // Process data for charts
         if (period === 'weekly') {
           // Group by day for weekly view
-          const dailyData = expenses.reduce((acc: { [key: string]: number }, expense) => {
+          const dailyData = expensesResult.data.reduce((acc: { [key: string]: number }, expense) => {
             const date = new Date(expense.date);
             const dayName = date.toLocaleDateString('id-ID', { weekday: 'short' });
             acc[dayName] = (acc[dayName] || 0) + Number(expense.amount);
@@ -90,7 +100,7 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
           })));
         } else {
           // Group by month for monthly/yearly view
-          const monthlyDataMap = expenses.reduce((acc: { [key: string]: number }, expense) => {
+          const monthlyDataMap = expensesResult.data.reduce((acc: { [key: string]: number }, expense) => {
             const date = new Date(expense.date);
             const monthName = date.toLocaleDateString('id-ID', { month: 'short' });
             acc[monthName] = (acc[monthName] || 0) + Number(expense.amount);
@@ -104,7 +114,7 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
         }
 
         // Group by category for pie chart
-        const categoryDataMap = expenses.reduce((acc: { [key: string]: number }, expense) => {
+        const categoryDataMap = expensesResult.data.reduce((acc: { [key: string]: number }, expense) => {
           const category = expense.category || 'belanja';
           acc[category] = (acc[category] || 0) + Number(expense.amount);
           return acc;
@@ -116,17 +126,11 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
         })));
       }
 
-      // Fetch budget settings
-      const { data: budgetData, error: budgetError } = await supabase
-        .from('budget_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!budgetError && budgetData) {
+      // Process budget data
+      if (!budgetResult.error && budgetResult.data) {
         setBudgetInfo({
-          monthly_salary: Number(budgetData.monthly_salary),
-          fixed_expenses: Number(budgetData.fixed_expenses)
+          monthly_salary: Number(budgetResult.data.monthly_salary),
+          fixed_expenses: Number(budgetResult.data.fixed_expenses)
         });
       }
 
@@ -136,11 +140,11 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
 
   useEffect(() => {
     fetchReportData();
-  }, [period]);
+  }, [fetchReportData]);
 
   return {
     expensesData,
