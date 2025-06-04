@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BudgetAlert } from '@/components/beranda/BudgetAlert';
 import { ShortcutsSection } from '@/components/beranda/ShortcutsSection';
+import { useExpenseRecording } from '@/hooks/useExpenseRecording';
 
 // TypeScript interfaces for our data types
 interface TodoItem {
@@ -18,6 +19,7 @@ interface TodoItem {
   completed: boolean;
   date: string;
 }
+
 interface ImportantEvent {
   id: string;
   title: string;
@@ -25,6 +27,7 @@ interface ImportantEvent {
   date: string;
   time: string;
 }
+
 interface ShoppingItem {
   id: string;
   name: string;
@@ -32,8 +35,10 @@ interface ShoppingItem {
   quantity: number;
   purchased?: boolean;
 }
+
 const Beranda = () => {
   const { user } = useAuth();
+  const { recordExpense, removeExpense } = useExpenseRecording();
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [importantEvents, setImportantEvents] = useState<ImportantEvent[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
@@ -68,7 +73,7 @@ const Beranda = () => {
         supabase.from('shopping_items').select('id, name, price, quantity').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
         
         // Fetch budget information
-        supabase.from('budget_settings').select('monthly_salary, fixed_expenses').eq('user_id', user.id).single(),
+        supabase.from('budget_settings').select('monthly_salary, fixed_expenses').eq('user_id', user.id).maybeSingle(),
         
         // Fetch today's expenses
         supabase.from('expenses').select('amount').eq('user_id', user.id).eq('date', today)
@@ -143,13 +148,26 @@ const Beranda = () => {
   };
 
   const toggleShoppingItem = async (itemId: string) => {
+    const item = shoppingList.find(item => item.id === itemId);
+    if (!item) return;
+
+    const newPurchasedState = !item.purchased;
+    
+    // Update local state
     setShoppingList(prev => 
       prev.map(item => 
         item.id === itemId 
-          ? { ...item, purchased: !item.purchased }
+          ? { ...item, purchased: newPurchasedState }
           : item
       )
     );
+
+    // Record or remove expense based on new state
+    if (newPurchasedState) {
+      await recordExpense(item.name, item.price);
+    } else {
+      await removeExpense(item.name, item.price);
+    }
   };
 
   useEffect(() => {
@@ -332,4 +350,5 @@ const Beranda = () => {
       </div>
     </MainLayout>;
 };
+
 export default Beranda;

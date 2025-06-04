@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface ShoppingItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   purchased?: boolean;
@@ -17,7 +17,7 @@ export const useShoppingItems = () => {
 
   const addItem = (name: string, price: number) => {
     const newItemObj = {
-      id: Date.now(),
+      id: Date.now().toString(), // Temporary local ID
       name,
       price,
       purchased: false
@@ -25,11 +25,11 @@ export const useShoppingItems = () => {
     setShoppingItems([...shoppingItems, newItemObj]);
   };
 
-  const removeItem = (id: number) => {
+  const removeItem = (id: string) => {
     setShoppingItems(shoppingItems.filter(item => item.id !== id));
   };
 
-  const toggleItem = async (id: number) => {
+  const toggleItem = async (id: string) => {
     setShoppingItems(prev => prev.map(item => {
       if (item.id === id) {
         const updatedItem = { ...item, purchased: !item.purchased };
@@ -63,6 +63,7 @@ export const useShoppingItems = () => {
         user_id: user.id,
         name: item.name,
         price: item.price,
+        quantity: 1 // Default quantity
       }));
 
       // Clear previous items and insert new ones

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface ShoppingItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   purchased?: boolean;
@@ -21,7 +21,7 @@ export const useShoppingItemsData = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // Optimized query - only select needed columns
+        // Optimized query - only select needed columns and use proper UUID
         const { data: shoppingData, error: shoppingError } = await supabase
           .from('shopping_items')
           .select('id, name, price, quantity')
@@ -33,8 +33,8 @@ export const useShoppingItemsData = () => {
         }
         
         if (shoppingData && shoppingData.length > 0) {
-          const formattedItems = shoppingData.map((item, index) => ({
-            id: index + 1,
+          const formattedItems = shoppingData.map((item) => ({
+            id: item.id, // Use actual UUID from database
             name: item.name,
             price: parseFloat(item.price.toString()),
             purchased: false // Default to not purchased
@@ -43,6 +43,8 @@ export const useShoppingItemsData = () => {
         } else {
           setShoppingItems([]);
         }
+      } else {
+        setShoppingItems([]);
       }
     } catch (error) {
       console.error('Error fetching shopping items:', error);
