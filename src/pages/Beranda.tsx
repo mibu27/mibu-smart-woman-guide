@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
@@ -12,6 +11,7 @@ import { BudgetAlert } from '@/components/beranda/BudgetAlert';
 import { ShortcutsSection } from '@/components/beranda/ShortcutsSection';
 import { useExpenseRecording } from '@/hooks/useExpenseRecording';
 import { useCentralizedBudget } from '@/hooks/useCentralizedBudget';
+import { toast } from "sonner";
 
 // TypeScript interfaces for our data types
 interface TodoItem {
@@ -130,6 +130,45 @@ const Beranda = () => {
     await Promise.all([fetchData(), refreshBudgetData()]);
   };
 
+  // Add toggle function for todo items
+  const toggleTodoItem = async (todoId: string) => {
+    const todo = todoItems.find(item => item.id === todoId);
+    if (!todo) return;
+
+    const newCompletedState = !todo.completed;
+    
+    // Optimistic update
+    setTodoItems(prev => 
+      prev.map(item => 
+        item.id === todoId 
+          ? { ...item, completed: newCompletedState }
+          : item
+      )
+    );
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: newCompletedState })
+        .eq('id', todoId);
+
+      if (error) throw error;
+      
+      toast.success(newCompletedState ? 'Tugas diselesaikan!' : 'Tugas dibatalkan');
+    } catch (error) {
+      // Revert optimistic update on error
+      setTodoItems(prev => 
+        prev.map(item => 
+          item.id === todoId 
+            ? { ...item, completed: !newCompletedState }
+            : item
+        )
+      );
+      console.error('Error updating todo:', error);
+      toast.error('Gagal mengupdate tugas');
+    }
+  };
+
   const toggleShoppingItem = async (itemId: string) => {
     const item = shoppingList.find(item => item.id === itemId);
     if (!item) return;
@@ -205,16 +244,23 @@ const Beranda = () => {
             </Link>
           </div>
           
-          {/* Daily Budget Limit Display */}
+          {/* Daily Budget Limit Display - Now properly synchronized */}
           {batasHarian > 0 && (
             <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-              <span className="text-blue-800">
-                Batas Belanja Harian: Rp {formatIDR(batasHarian)}
-              </span>
-              {totalSpending > 0 && (
-                <span className={`ml-2 ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
-                  | Terpakai: Rp {formatIDR(totalSpending)}
+              <div className="flex justify-between items-center">
+                <span className="text-blue-800">
+                  Batas Belanja Harian: Rp {formatIDR(batasHarian)}
                 </span>
+                {totalSpending > 0 && (
+                  <span className={`${isOverBudget ? 'text-red-600 font-bold' : 'text-green-600'}`}>
+                    Terpakai: Rp {formatIDR(totalSpending)} ({Math.round((totalSpending/batasHarian)*100)}%)
+                  </span>
+                )}
+              </div>
+              {isOverBudget && (
+                <div className="text-red-600 text-xs mt-1 font-medium">
+                  ⚠️ Sudah melebihi batas harian sebesar Rp {formatIDR(totalSpending - batasHarian)}
+                </div>
               )}
             </div>
           )}
@@ -250,6 +296,16 @@ const Beranda = () => {
                       </div>
                     </div>
                   ))}
+                  
+                  {/* Shopping Summary */}
+                  <div className="pt-2 mt-2 border-t">
+                    <div className="flex justify-between text-sm">
+                      <span>Sisa Budget:</span>
+                      <span className={batasHarian - totalSpending >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        Rp {formatIDR(Math.max(0, batasHarian - totalSpending))}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
@@ -264,7 +320,7 @@ const Beranda = () => {
           </Card>
         </section>
 
-        {/* To Do List */}
+        {/* To Do List - Now with working checkboxes */}
         <section className="border border-gray-200 rounded-lg p-3 bg-slate-200">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-lg font-medium">To Do List Hari Ini</h2>
@@ -274,23 +330,35 @@ const Beranda = () => {
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? <div className="text-center py-4 text-gray-500">
+              {isLoading ? (
+                <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat tugas hari ini...</p>
-                </div> : todoItems.length > 0 ? <div className="space-y-2">
-                  {todoItems.map(todo => <div key={todo.id} className="flex items-center py-2">
-                      <div className={`w-4 h-4 rounded-full border-2 mr-3 ${todo.completed ? 'bg-mibu-purple border-mibu-purple' : 'border-gray-300'}`}></div>
+                </div>
+              ) : todoItems.length > 0 ? (
+                <div className="space-y-2">
+                  {todoItems.map(todo => (
+                    <div key={todo.id} className="flex items-center py-2">
+                      <Checkbox
+                        checked={todo.completed}
+                        onCheckedChange={() => toggleTodoItem(todo.id)}
+                        className="mr-3 data-[state=checked]:bg-mibu-purple data-[state=checked]:border-mibu-purple"
+                      />
                       <span className={`${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                         {todo.title}
                       </span>
-                    </div>)}
-                </div> : <div className="text-center py-8 text-gray-500">
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
                   Tidak ada tugas untuk hari ini.
                   <br />
                   <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan tugas baru
                   </Link>
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
