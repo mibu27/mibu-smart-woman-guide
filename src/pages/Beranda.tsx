@@ -84,6 +84,8 @@ const Beranda = () => {
         toast.success(`${item.name} dibatalkan dari pembelian`);
       }
       // Budget data akan otomatis ter-refresh via expense recording
+      // Refresh beranda data juga untuk sinkronisasi
+      await refreshBerandaData();
     } catch (error) {
       console.error('Error toggling shopping item:', error);
       toast.error('Gagal mengupdate item belanja');
@@ -98,6 +100,17 @@ const Beranda = () => {
       month: 'short'
     });
   };
+
+  // Hitung total dari shopping list yang belum dibeli
+  const totalShoppingList = shoppingList
+    .filter(item => !item.purchased)
+    .reduce((total, item) => total + (item.price * item.quantity), 0);
+
+  // Hitung sisa budget yang akurat
+  const remainingBudget = Math.max(0, batasHarian - totalSpending);
+  
+  // Persentase penggunaan budget
+  const usagePercentage = batasHarian > 0 ? Math.round((totalSpending / batasHarian) * 100) : 0;
 
   if (!user) {
     return (
@@ -152,18 +165,16 @@ const Beranda = () => {
             </Link>
           </div>
           
-          {/* Daily Budget Display */}
+          {/* Daily Budget Display - Fixed Logic */}
           {batasHarian > 0 && (
             <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-blue-800">
                   Batas Belanja Harian: Rp {formatIDR(batasHarian)}
                 </span>
-                {totalSpending > 0 && (
-                  <span className={`${isOverBudget ? 'text-red-600 font-bold' : 'text-green-600'}`}>
-                    Terpakai: Rp {formatIDR(totalSpending)} ({Math.round((totalSpending/batasHarian)*100)}%)
-                  </span>
-                )}
+                <span className={`${isOverBudget ? 'text-red-600 font-bold' : 'text-green-600'}`}>
+                  Terpakai: Rp {formatIDR(totalSpending)} ({usagePercentage}%)
+                </span>
               </div>
               {isOverBudget && (
                 <div className="text-red-600 text-xs mt-1 font-medium">
@@ -205,14 +216,33 @@ const Beranda = () => {
                     </div>
                   ))}
                   
-                  {/* Shopping Summary */}
-                  <div className="pt-2 mt-2 border-t">
+                  {/* Shopping Summary - Fixed Logic */}
+                  <div className="pt-2 mt-2 border-t space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span>Sisa Budget:</span>
-                      <span className={batasHarian - totalSpending >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        Rp {formatIDR(Math.max(0, batasHarian - totalSpending))}
+                      <span>Total Belanja Terencana:</span>
+                      <span className="text-mibu-purple font-medium">
+                        Rp {formatIDR(totalShoppingList)}
                       </span>
                     </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Sudah Terpakai Hari Ini:</span>
+                      <span className={totalSpending > 0 ? 'text-orange-600 font-medium' : 'text-gray-500'}>
+                        Rp {formatIDR(totalSpending)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm font-semibold border-t pt-1">
+                      <span>Sisa Budget:</span>
+                      <span className={remainingBudget > 0 ? 'text-green-600' : 'text-red-600'}>
+                        Rp {formatIDR(remainingBudget)}
+                      </span>
+                    </div>
+                    
+                    {/* Warning if planned shopping exceeds remaining budget */}
+                    {totalShoppingList > remainingBudget && (
+                      <div className="text-xs text-red-600 bg-red-50 p-2 rounded mt-2">
+                        ⚠️ Rencana belanja melebihi sisa budget sebesar Rp {formatIDR(totalShoppingList - remainingBudget)}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
