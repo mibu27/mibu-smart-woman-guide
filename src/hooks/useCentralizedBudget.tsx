@@ -1,7 +1,8 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useErrorHandler } from './useErrorHandler';
 
 interface BudgetData {
   gajiBulanan: number;
@@ -22,12 +23,13 @@ export const useCentralizedBudget = () => {
     isOverBudget: false
   });
   const [loading, setLoading] = useState(false);
+  const { handleError } = useErrorHandler();
 
-  const formatIDR = (value: number): string => {
+  const formatIDR = useCallback((value: number): string => {
     return Math.round(value).toLocaleString('id-ID');
-  };
+  }, []);
 
-  const fetchBudgetData = async () => {
+  const fetchBudgetData = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -46,7 +48,7 @@ export const useCentralizedBudget = () => {
 
       const today = new Date().toISOString().split('T')[0];
 
-      // Fetch budget settings and today's expenses in parallel
+      // Parallel queries for better performance
       const [budgetResult, expensesResult] = await Promise.all([
         supabase
           .from('budget_settings')
@@ -60,13 +62,21 @@ export const useCentralizedBudget = () => {
           .eq('date', today)
       ]);
 
+      if (budgetResult.error && budgetResult.error.code !== 'PGRST116') {
+        throw budgetResult.error;
+      }
+
+      if (expensesResult.error) {
+        throw expensesResult.error;
+      }
+
       let gajiBulanan = 0;
       let belanjaWajib = 0;
       let batasHarian = 0;
       let totalSpending = 0;
 
       // Process budget settings
-      if (!budgetResult.error && budgetResult.data) {
+      if (budgetResult.data) {
         gajiBulanan = Number(budgetResult.data.monthly_salary) || 0;
         belanjaWajib = Number(budgetResult.data.fixed_expenses) || 0;
         
@@ -77,8 +87,8 @@ export const useCentralizedBudget = () => {
         batasHarian = Math.max(0, Math.round(dailyLimit));
       }
 
-      // Process today's expenses
-      if (!expensesResult.error && expensesResult.data) {
+      // Process expenses
+      if (expensesResult.data) {
         totalSpending = expensesResult.data.reduce((sum, expense) => sum + Number(expense.amount), 0);
       }
 
@@ -96,19 +106,21 @@ export const useCentralizedBudget = () => {
       });
 
     } catch (error) {
-      console.error('Error fetching budget data:', error);
-      toast.error("Gagal memuat data anggaran");
+      handleError(error as Error, 'Error fetching budget data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [handleError]);
+
+  // Memoized values for performance
+  const memoizedBudgetData = useMemo(() => budgetData, [budgetData]);
 
   useEffect(() => {
     fetchBudgetData();
-  }, []);
+  }, [fetchBudgetData]);
 
   return {
-    ...budgetData,
+    ...memoizedBudgetData,
     loading,
     formatIDR,
     refreshBudgetData: fetchBudgetData
