@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useErrorHandler } from './useErrorHandler';
 
 interface ExpenseData {
   date: string;
@@ -27,13 +28,26 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [budgetInfo, setBudgetInfo] = useState({ monthly_salary: 0, fixed_expenses: 0 });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { handleError } = useErrorHandler();
 
   const fetchReportData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('Fetching report data for period:', period);
+      
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) return;
+      if (!user) {
+        console.log('No user found, clearing data');
+        setExpensesData([]);
+        setMonthlyData([]);
+        setCategoryData([]);
+        setTotalExpenses(0);
+        setBudgetInfo({ monthly_salary: 0, fixed_expenses: 0 });
+        return;
+      }
 
       // Calculate date range based on period
       const now = new Date();
@@ -48,9 +62,10 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
         startDate = new Date(now.getFullYear(), 0, 1);
       }
 
+      console.log('Date range:', startDate.toISOString().split('T')[0], 'to', now.toISOString().split('T')[0]);
+
       // Use Promise.all for parallel fetching to improve performance
       const [expensesResult, budgetResult] = await Promise.all([
-        // Fetch expenses for the period - only select needed columns
         supabase
           .from('expenses')
           .select('date, amount, category, description')
@@ -59,7 +74,6 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
           .lte('date', now.toISOString().split('T')[0])
           .order('date', { ascending: true }),
         
-        // Fetch budget settings - only select needed columns
         supabase
           .from('budget_settings')
           .select('monthly_salary, fixed_expenses')
@@ -69,28 +83,38 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
 
       if (expensesResult.error) {
         console.error('Error fetching expenses:', expensesResult.error);
-        return;
+        throw expensesResult.error;
       }
 
+      if (budgetResult.error && budgetResult.error.code !== 'PGRST116') {
+        console.error('Error fetching budget:', budgetResult.error);
+        throw budgetResult.error;
+      }
+
+      console.log('Expenses data:', expensesResult.data?.length || 0, 'records');
+      console.log('Budget data:', budgetResult.data);
+
       if (expensesResult.data) {
-        setExpensesData(expensesResult.data.map(expense => ({
+        const processedExpenses = expensesResult.data.map(expense => ({
           date: expense.date,
           amount: Number(expense.amount),
           category: expense.category || 'belanja',
           description: expense.description
-        })));
+        }));
+        
+        setExpensesData(processedExpenses);
 
         // Calculate total expenses
-        const total = expensesResult.data.reduce((sum, expense) => sum + Number(expense.amount), 0);
+        const total = processedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
         setTotalExpenses(total);
+        console.log('Total expenses calculated:', total);
 
         // Process data for charts
         if (period === 'weekly') {
-          // Group by day for weekly view
-          const dailyData = expensesResult.data.reduce((acc: { [key: string]: number }, expense) => {
+          const dailyData = processedExpenses.reduce((acc: { [key: string]: number }, expense) => {
             const date = new Date(expense.date);
             const dayName = date.toLocaleDateString('id-ID', { weekday: 'short' });
-            acc[dayName] = (acc[dayName] || 0) + Number(expense.amount);
+            acc[dayName] = (acc[dayName] || 0) + expense.amount;
             return acc;
           }, {});
 
@@ -99,11 +123,10 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
             pengeluaran
           })));
         } else {
-          // Group by month for monthly/yearly view
-          const monthlyDataMap = expensesResult.data.reduce((acc: { [key: string]: number }, expense) => {
+          const monthlyDataMap = processedExpenses.reduce((acc: { [key: string]: number }, expense) => {
             const date = new Date(expense.date);
             const monthName = date.toLocaleDateString('id-ID', { month: 'short' });
-            acc[monthName] = (acc[monthName] || 0) + Number(expense.amount);
+            acc[monthName] = (acc[monthName] || 0) + expense.amount;
             return acc;
           }, {});
 
@@ -114,9 +137,9 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
         }
 
         // Group by category for pie chart
-        const categoryDataMap = expensesResult.data.reduce((acc: { [key: string]: number }, expense) => {
+        const categoryDataMap = processedExpenses.reduce((acc: { [key: string]: number }, expense) => {
           const category = expense.category || 'belanja';
-          acc[category] = (acc[category] || 0) + Number(expense.amount);
+          acc[category] = (acc[category] || 0) + expense.amount;
           return acc;
         }, {});
 
@@ -124,23 +147,34 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
           name: name.charAt(0).toUpperCase() + name.slice(1),
           value
         })));
+      } else {
+        setExpensesData([]);
+        setMonthlyData([]);
+        setCategoryData([]);
+        setTotalExpenses(0);
       }
 
       // Process budget data
-      if (!budgetResult.error && budgetResult.data) {
+      if (budgetResult.data) {
         setBudgetInfo({
-          monthly_salary: Number(budgetResult.data.monthly_salary),
-          fixed_expenses: Number(budgetResult.data.fixed_expenses)
+          monthly_salary: Number(budgetResult.data.monthly_salary) || 0,
+          fixed_expenses: Number(budgetResult.data.fixed_expenses) || 0
         });
+      } else {
+        setBudgetInfo({ monthly_salary: 0, fixed_expenses: 0 });
       }
 
+      console.log('Report data fetch completed successfully');
+
     } catch (error) {
-      console.error('Error fetching report data:', error);
-      toast.error("Gagal memuat data laporan");
+      console.error('Error in fetchReportData:', error);
+      const errorMessage = "Gagal memuat data laporan";
+      setError(errorMessage);
+      handleError(error as Error, errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, handleError]);
 
   useEffect(() => {
     fetchReportData();
@@ -153,6 +187,7 @@ export const useReportData = (period: 'weekly' | 'monthly' | 'yearly') => {
     totalExpenses,
     budgetInfo,
     loading,
+    error,
     refreshData: fetchReportData
   };
 };

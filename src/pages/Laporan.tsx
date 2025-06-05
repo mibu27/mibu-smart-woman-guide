@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +32,7 @@ const Laporan = () => {
     totalExpenses, 
     budgetInfo, 
     loading, 
+    error,
     refreshData 
   } = useReportData(period);
   
@@ -53,6 +53,8 @@ const Laporan = () => {
   const savingsPercentage = targetBudget > 0 ? Math.round((savedAmount / targetBudget) * 100) : 0;
   
   const hasData = totalExpenses > 0 || budgetInfo.monthly_salary > 0;
+  
+  console.log('Laporan state:', { period, hasData, totalExpenses, targetBudget, loading, error });
   
   return (
     <MainLayout title="Laporan">
@@ -75,18 +77,21 @@ const Laporan = () => {
                 <button 
                   className={`px-3 py-1 ${period === 'weekly' ? 'bg-mibu-purple text-white' : 'bg-white'}`}
                   onClick={() => setPeriod('weekly')}
+                  disabled={loading}
                 >
                   Mingguan
                 </button>
                 <button 
                   className={`px-3 py-1 ${period === 'monthly' ? 'bg-mibu-purple text-white' : 'bg-white'}`}
                   onClick={() => setPeriod('monthly')}
+                  disabled={loading}
                 >
                   Bulanan
                 </button>
                 <button 
                   className={`px-3 py-1 ${period === 'yearly' ? 'bg-mibu-purple text-white' : 'bg-white'}`}
                   onClick={() => setPeriod('yearly')}
+                  disabled={loading}
                 >
                   Tahunan
                 </button>
@@ -94,7 +99,30 @@ const Laporan = () => {
             </div>
           </div>
           
-          {hasData ? (
+          {/* Error State */}
+          {error && (
+            <Card className="mb-5 border-red-200">
+              <CardContent className="p-4">
+                <div className="flex items-center text-red-600">
+                  <RefreshCw size={20} className="mr-2" />
+                  <span>{error}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Loading State */}
+          {loading && (
+            <Card className="mb-5">
+              <CardContent className="p-4 text-center">
+                <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
+                <p>Memuat data laporan...</p>
+              </CardContent>
+            </Card>
+          )}
+          
+          {!loading && !error && (hasData ? (
+            // ... keep existing code (all the chart and summary sections)
             <>
               {/* Savings Card */}
               <Card className="mb-5 border-2 border-green-200">
@@ -213,7 +241,7 @@ const Laporan = () => {
                 </div>
               </CardContent>
             </Card>
-          )}
+          ))}
           
           {/* Savings Tips */}
           <Card>

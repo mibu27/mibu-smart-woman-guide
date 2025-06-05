@@ -1,8 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useExpenseRecording } from './useExpenseRecording';
+import { useErrorHandler } from './useErrorHandler';
 
 interface ShoppingItem {
   id: string;
@@ -17,28 +18,34 @@ export const useShoppingItemsManagement = (
   const [items, setItems] = useState<ShoppingItem[]>(initialItems);
   const [loading, setLoading] = useState(false);
   const { recordExpense, removeExpense } = useExpenseRecording();
+  const { handleError } = useErrorHandler();
 
-  const addItem = (name: string, price: number) => {
+  const addItem = useCallback((name: string, price: number) => {
     if (!name.trim() || price <= 0) {
       toast.error("Nama item dan harga harus valid");
       return;
     }
 
     const newItem: ShoppingItem = {
-      id: `temp_${Date.now()}`,
+      id: crypto.randomUUID(), // Use proper UUID
       name: name.trim(),
       price,
       purchased: false
     };
     
     setItems(prev => [...prev, newItem]);
-  };
+    console.log('Added item:', newItem);
+  }, []);
 
-  const removeItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-  };
+  const removeItem = useCallback((id: string) => {
+    setItems(prev => {
+      const filteredItems = prev.filter(item => item.id !== id);
+      console.log('Removed item with id:', id);
+      return filteredItems;
+    });
+  }, []);
 
-  const toggleItem = async (id: string) => {
+  const toggleItem = useCallback(async (id: string) => {
     const item = items.find(item => item.id === id);
     if (!item) {
       toast.error("Item tidak ditemukan");
@@ -46,6 +53,7 @@ export const useShoppingItemsManagement = (
     }
 
     const newPurchasedState = !item.purchased;
+    console.log('Toggling item:', id, 'to:', newPurchasedState);
     
     // Optimistic update
     setItems(prev => prev.map(item => 
@@ -57,8 +65,10 @@ export const useShoppingItemsManagement = (
     try {
       if (newPurchasedState) {
         await recordExpense(item.name, item.price);
+        console.log('Expense recorded for:', item.name);
       } else {
         await removeExpense(item.name, item.price);
+        console.log('Expense removed for:', item.name);
       }
     } catch (error) {
       // Revert optimistic update on error
@@ -67,12 +77,11 @@ export const useShoppingItemsManagement = (
           ? { ...item, purchased: !newPurchasedState }
           : item
       ));
-      console.error('Error toggling item:', error);
-      toast.error("Gagal mengubah status item");
+      handleError(error as Error, 'Error toggling item');
     }
-  };
+  }, [items, recordExpense, removeExpense, handleError]);
 
-  const saveItems = async () => {
+  const saveItems = useCallback(async () => {
     if (items.length === 0) {
       toast.warning("Tidak ada item untuk disimpan");
       return;
@@ -111,14 +120,14 @@ export const useShoppingItemsManagement = (
         if (error) throw error;
       }
 
+      console.log('Shopping items saved successfully');
       toast.success("Daftar belanja berhasil disimpan");
     } catch (error) {
-      console.error('Error saving shopping items:', error);
-      toast.error("Gagal menyimpan daftar belanja");
+      handleError(error as Error, 'Error saving shopping items');
     } finally {
       setLoading(false);
     }
-  };
+  }, [items, handleError]);
 
   const totalSpending = items.reduce((sum, item) => sum + item.price, 0);
 
