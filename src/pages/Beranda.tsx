@@ -111,6 +111,9 @@ const Beranda = () => {
     .filter(item => item.purchased)
     .reduce((total, item) => total + (item.price * item.quantity), 0);
 
+  // Hitung pengeluaran lain (bukan dari shopping list)
+  const otherExpenses = Math.max(0, totalSpending - totalShoppingPurchased);
+
   // Hitung sisa budget yang akurat
   const remainingBudget = Math.max(0, batasHarian - totalSpending);
   
@@ -123,6 +126,7 @@ const Beranda = () => {
     totalSpending,
     totalShoppingPlanned,
     totalShoppingPurchased,
+    otherExpenses,
     batasHarian,
     remainingBudget
   });
@@ -180,7 +184,7 @@ const Beranda = () => {
             </Link>
           </div>
           
-          {/* Daily Budget Display - Corrected Logic */}
+          {/* Daily Budget Display - Accurate Logic */}
           {batasHarian > 0 && (
             <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
               <div className="flex justify-between items-center">
@@ -188,14 +192,24 @@ const Beranda = () => {
                   Batas Belanja Harian: Rp {formatIDR(batasHarian)}
                 </span>
                 <span className={`${isOverBudget ? 'text-red-600 font-bold' : 'text-green-600'}`}>
-                  Total Terpakai: Rp {formatIDR(totalSpending)} ({usagePercentage}%)
+                  Terpakai: Rp {formatIDR(totalSpending)} ({usagePercentage}%)
                 </span>
               </div>
-              {totalSpending !== totalShoppingPurchased && (
-                <div className="text-orange-600 text-xs mt-1">
-                  ℹ️ Termasuk pengeluaran lain hari ini: Rp {formatIDR(totalSpending - totalShoppingPurchased)}
+              
+              {/* Detail breakdown pengeluaran */}
+              <div className="mt-1 space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600">• Dari daftar belanja ini:</span>
+                  <span className="text-green-600">Rp {formatIDR(totalShoppingPurchased)}</span>
                 </div>
-              )}
+                {otherExpenses > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">• Pengeluaran lain hari ini:</span>
+                    <span className="text-orange-600">Rp {formatIDR(otherExpenses)}</span>
+                  </div>
+                )}
+              </div>
+              
               {isOverBudget && (
                 <div className="text-red-600 text-xs mt-1 font-medium">
                   ⚠️ Sudah melebihi batas harian sebesar Rp {formatIDR(totalSpending - batasHarian)}
@@ -236,28 +250,29 @@ const Beranda = () => {
                     </div>
                   ))}
                   
-                  {/* Shopping Summary - Corrected Logic */}
+                  {/* Shopping Summary */}
                   <div className="pt-2 mt-2 border-t space-y-1">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Total Daftar Belanja:</span>
+                      <span className="text-mibu-purple">
+                        Rp {formatIDR(totalShoppingPlanned + totalShoppingPurchased)}
+                      </span>
+                    </div>
                     <div className="flex justify-between text-sm">
-                      <span>Belanja Terencana (Belum Beli):</span>
-                      <span className="text-mibu-purple font-medium">
+                      <span>• Belum dibeli:</span>
+                      <span className="text-orange-600">
                         Rp {formatIDR(totalShoppingPlanned)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Dari Daftar Ini (Sudah Beli):</span>
-                      <span className={totalShoppingPurchased > 0 ? 'text-green-600 font-medium' : 'text-gray-500'}>
+                      <span>• Sudah dibeli:</span>
+                      <span className="text-green-600">
                         Rp {formatIDR(totalShoppingPurchased)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm border-t pt-1">
-                      <span>Total Pengeluaran Hari Ini:</span>
-                      <span className={totalSpending > 0 ? 'text-orange-600 font-medium' : 'text-gray-500'}>
-                        Rp {formatIDR(totalSpending)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm font-semibold border-t pt-1">
-                      <span>Sisa Budget:</span>
+                    
+                    <div className="flex justify-between text-sm font-semibold border-t pt-1 mt-2">
+                      <span>Sisa Budget Harian:</span>
                       <span className={remainingBudget > 0 ? 'text-green-600' : 'text-red-600'}>
                         Rp {formatIDR(remainingBudget)}
                       </span>
