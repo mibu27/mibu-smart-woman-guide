@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeBeranda } from '@/hooks/useRealtimeBeranda';
 import { useCentralizedBudget } from '@/hooks/useCentralizedBudget';
 import { useExpenseRecording } from '@/hooks/useExpenseRecording';
+import { useExpenses } from '@/hooks/useExpenses';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -36,6 +37,10 @@ const Beranda = () => {
   } = useCentralizedBudget();
   
   const { recordExpense, removeExpense } = useExpenseRecording();
+  const { expenses, getTotalExpenses } = useExpenses();
+
+  // Get today's total expenses directly from expenses hook for debugging
+  const todayTotalFromExpenses = getTotalExpenses();
 
   const handleRefresh = async () => {
     console.log('Manual refresh triggered');
@@ -120,16 +125,18 @@ const Beranda = () => {
   // Persentase penggunaan budget dari total spending (semua pengeluaran)
   const usagePercentage = batasHarian > 0 ? Math.round((totalSpending / batasHarian) * 100) : 0;
 
-  // Debug log untuk melihat data
-  console.log('Shopping List Debug:', {
-    shoppingList,
-    totalSpending,
-    totalShoppingPlanned,
-    totalShoppingPurchased,
-    otherExpenses,
-    batasHarian,
-    remainingBudget
-  });
+  // Debug log untuk melihat data dengan lebih detail
+  console.log('=== BERANDA DEBUG ===');
+  console.log('Shopping List:', shoppingList);
+  console.log('Total Spending (from useCentralizedBudget):', totalSpending);
+  console.log('Total from useExpenses hook:', todayTotalFromExpenses);
+  console.log('Expenses list:', expenses);
+  console.log('Shopping Planned:', totalShoppingPlanned);
+  console.log('Shopping Purchased:', totalShoppingPurchased);
+  console.log('Other Expenses calculated:', otherExpenses);
+  console.log('Batas Harian:', batasHarian);
+  console.log('Remaining Budget:', remainingBudget);
+  console.log('=== END DEBUG ===');
 
   if (!user) {
     return (
@@ -175,6 +182,18 @@ const Beranda = () => {
         {/* Shortcuts */}
         <ShortcutsSection />
 
+        {/* Debug Info - Will help us see what's happening */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+            <strong>Debug Info:</strong>
+            <br />Total from useCentralizedBudget: Rp {formatIDR(totalSpending)}
+            <br />Total from useExpenses: Rp {formatIDR(todayTotalFromExpenses)}
+            <br />Shopping Purchased: Rp {formatIDR(totalShoppingPurchased)}
+            <br />Other Expenses: Rp {formatIDR(otherExpenses)}
+            <br />Expenses count: {expenses.length}
+          </div>
+        )}
+
         {/* Shopping List */}
         <section className="border border-gray-200 rounded-lg p-3 bg-slate-300">
           <div className="flex justify-between items-center mb-2">
@@ -184,7 +203,7 @@ const Beranda = () => {
             </Link>
           </div>
           
-          {/* Daily Budget Display - Accurate Logic */}
+          {/* Daily Budget Display */}
           {batasHarian > 0 && (
             <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
               <div className="flex justify-between items-center">
@@ -196,18 +215,26 @@ const Beranda = () => {
                 </span>
               </div>
               
-              {/* Detail breakdown pengeluaran */}
+              {/* Detail breakdown pengeluaran - Show what we actually know */}
               <div className="mt-1 space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">• Dari daftar belanja ini:</span>
-                  <span className="text-green-600">Rp {formatIDR(totalShoppingPurchased)}</span>
-                </div>
+                {totalShoppingPurchased > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">• Dari daftar belanja ini:</span>
+                    <span className="text-green-600">Rp {formatIDR(totalShoppingPurchased)}</span>
+                  </div>
+                )}
                 {otherExpenses > 0 && (
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-600">• Pengeluaran lain hari ini:</span>
                     <span className="text-orange-600">Rp {formatIDR(otherExpenses)}</span>
                   </div>
                 )}
+                
+                {/* Show total comparison for transparency */}
+                <div className="flex justify-between text-xs border-t pt-1 mt-1">
+                  <span className="text-gray-800 font-medium">Total Pengeluaran Hari Ini:</span>
+                  <span className="text-blue-600 font-medium">Rp {formatIDR(totalSpending)}</span>
+                </div>
               </div>
               
               {isOverBudget && (
