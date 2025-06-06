@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '@/components/MainLayout';
@@ -14,29 +13,30 @@ import { useCentralizedBudget } from '@/hooks/useCentralizedBudget';
 import { useExpenseRecording } from '@/hooks/useExpenseRecording';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
 const Beranda = () => {
-  const { user } = useAuth();
-  const { 
-    todoItems, 
-    importantEvents, 
-    shoppingList, 
-    isLoading, 
+  const {
+    user
+  } = useAuth();
+  const {
+    todoItems,
+    importantEvents,
+    shoppingList,
+    isLoading,
     lastUpdated,
-    refresh: refreshBerandaData 
+    refresh: refreshBerandaData
   } = useRealtimeBeranda();
-  
-  const { 
-    batasHarian, 
-    totalSpending, 
-    isOverBudget, 
-    formatIDR, 
+  const {
+    batasHarian,
+    totalSpending,
+    isOverBudget,
+    formatIDR,
     refreshBudgetData,
-    loading: budgetLoading 
+    loading: budgetLoading
   } = useCentralizedBudget();
-  
-  const { recordExpense, removeExpense } = useExpenseRecording();
-
+  const {
+    recordExpense,
+    removeExpense
+  } = useExpenseRecording();
   const handleRefresh = async () => {
     console.log('Manual refresh triggered');
     await Promise.all([refreshBerandaData(), refreshBudgetData()]);
@@ -47,18 +47,15 @@ const Beranda = () => {
   const toggleTodoItem = async (todoId: string) => {
     const todo = todoItems.find(item => item.id === todoId);
     if (!todo) return;
-
     const newCompletedState = !todo.completed;
     console.log('Toggling todo:', todoId, 'to:', newCompletedState);
-
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ completed: newCompletedState })
-        .eq('id', todoId);
-
+      const {
+        error
+      } = await supabase.from('tasks').update({
+        completed: newCompletedState
+      }).eq('id', todoId);
       if (error) throw error;
-      
       toast.success(newCompletedState ? 'Tugas diselesaikan!' : 'Tugas dibatalkan');
       // Data akan otomatis ter-refresh via real-time subscription
     } catch (error) {
@@ -71,10 +68,8 @@ const Beranda = () => {
   const toggleShoppingItem = async (itemId: string) => {
     const item = shoppingList.find(item => item.id === itemId);
     if (!item) return;
-
     const newPurchasedState = !item.purchased;
     console.log('Toggling shopping item:', itemId, 'to:', newPurchasedState);
-
     try {
       if (newPurchasedState) {
         // Marking as purchased - record expense
@@ -85,7 +80,7 @@ const Beranda = () => {
         await removeExpense(item.name, item.price);
         toast.success(`${item.name} dibatalkan dari pembelian dan dihapus dari pengeluaran`);
       }
-      
+
       // Refresh both budget and beranda data to ensure synchronization
       await Promise.all([refreshBudgetData(), refreshBerandaData()]);
     } catch (error) {
@@ -93,7 +88,6 @@ const Beranda = () => {
       toast.error('Gagal mengupdate item belanja');
     }
   };
-
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {
@@ -104,22 +98,17 @@ const Beranda = () => {
   };
 
   // Calculate shopping totals accurately based on current state
-  const totalShoppingPlanned = shoppingList
-    .filter(item => !item.purchased)
-    .reduce((total, item) => total + (item.price * item.quantity), 0);
-
-  const totalShoppingPurchased = shoppingList
-    .filter(item => item.purchased)
-    .reduce((total, item) => total + (item.price * item.quantity), 0);
+  const totalShoppingPlanned = shoppingList.filter(item => !item.purchased).reduce((total, item) => total + item.price * item.quantity, 0);
+  const totalShoppingPurchased = shoppingList.filter(item => item.purchased).reduce((total, item) => total + item.price * item.quantity, 0);
 
   // Calculate other expenses (total spending minus shopping purchased)
   const otherExpenses = Math.max(0, totalSpending - totalShoppingPurchased);
 
   // Calculate remaining budget accurately
   const remainingBudget = Math.max(0, batasHarian - totalSpending);
-  
+
   // Calculate usage percentage
-  const usagePercentage = batasHarian > 0 ? Math.round((totalSpending / batasHarian) * 100) : 0;
+  const usagePercentage = batasHarian > 0 ? Math.round(totalSpending / batasHarian * 100) : 0;
 
   // Enhanced debug information
   console.log('=== BERANDA SYNCHRONIZED DEBUG ===');
@@ -133,22 +122,17 @@ const Beranda = () => {
   console.log('Synchronization Check:', {
     totalCalculated: totalShoppingPurchased + otherExpenses,
     totalFromBudget: totalSpending,
-    isMatching: (totalShoppingPurchased + otherExpenses) === totalSpending
+    isMatching: totalShoppingPurchased + otherExpenses === totalSpending
   });
   console.log('=== END SYNCHRONIZED DEBUG ===');
-
   if (!user) {
-    return (
-      <MainLayout title="Beranda">
+    return <MainLayout title="Beranda">
         <div className="text-center py-8">
           <p className="text-gray-500">Silakan login untuk menggunakan fitur aplikasi</p>
         </div>
-      </MainLayout>
-    );
+      </MainLayout>;
   }
-  
-  return (
-    <MainLayout title="Beranda">
+  return <MainLayout title="Beranda">
       <div className="space-y-6">
         {/* Header with refresh button */}
         <div className="flex justify-between items-center">
@@ -158,39 +142,26 @@ const Beranda = () => {
               Terakhir diperbarui: {lastUpdated.toLocaleTimeString('id-ID')}
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh} 
-            disabled={isLoading || budgetLoading} 
-            className="text-mibu-purple border-mibu-purple"
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading || budgetLoading} className="text-mibu-purple border-mibu-purple">
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Sinkronisasi Data
           </Button>
         </div>
 
         {/* Budget Alert */}
-        <BudgetAlert 
-          isOverBudget={isOverBudget} 
-          totalSpending={totalSpending} 
-          batasHarian={batasHarian} 
-          formatIDR={formatIDR} 
-        />
+        <BudgetAlert isOverBudget={isOverBudget} totalSpending={totalSpending} batasHarian={batasHarian} formatIDR={formatIDR} />
 
         {/* Shortcuts */}
         <ShortcutsSection />
 
         {/* Synchronized Data Status */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded text-xs">
+        {process.env.NODE_ENV === 'development' && <div className="p-3 bg-green-50 border border-green-200 rounded text-xs">
             <strong>Status Sinkronisasi Data:</strong>
             <br />Total Pengeluaran: Rp {formatIDR(totalSpending)}
             <br />Dari Belanja (Terbeli): Rp {formatIDR(totalShoppingPurchased)}
             <br />Pengeluaran Lain: Rp {formatIDR(otherExpenses)}
-            <br />Status: {(totalShoppingPurchased + otherExpenses) === totalSpending ? '✅ Tersinkronisasi' : '❌ Tidak Tersinkronisasi'}
-          </div>
-        )}
+            <br />Status: {totalShoppingPurchased + otherExpenses === totalSpending ? '✅ Tersinkronisasi' : '❌ Tidak Tersinkronisasi'}
+          </div>}
 
         {/* Shopping List - Synchronized */}
         <section className="border border-gray-200 rounded-lg p-3 bg-slate-300">
@@ -202,71 +173,23 @@ const Beranda = () => {
           </div>
           
           {/* Accurate Daily Budget Display */}
-          {batasHarian > 0 && (
-            <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-blue-800">
-                  Batas Belanja Harian: Rp {formatIDR(batasHarian)}
-                </span>
-                <span className={`${isOverBudget ? 'text-red-600 font-bold' : 'text-green-600'}`}>
-                  Terpakai: Rp {formatIDR(totalSpending)} ({usagePercentage}%)
-                </span>
-              </div>
-              
-              {/* Accurate breakdown */}
-              <div className="mt-1 space-y-1">
-                {totalShoppingPurchased > 0 && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">• Belanja dari daftar ini:</span>
-                    <span className="text-green-600">Rp {formatIDR(totalShoppingPurchased)}</span>
-                  </div>
-                )}
-                {otherExpenses > 0 && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">• Pengeluaran lain hari ini:</span>
-                    <span className="text-orange-600">Rp {formatIDR(otherExpenses)}</span>
-                  </div>
-                )}
-                
-                <div className="flex justify-between text-xs border-t pt-1 mt-1">
-                  <span className="text-gray-800 font-medium">Total Pengeluaran Hari Ini:</span>
-                  <span className="text-blue-600 font-medium">Rp {formatIDR(totalSpending)}</span>
-                </div>
-              </div>
-              
-              {isOverBudget && (
-                <div className="text-red-600 text-xs mt-1 font-medium">
-                  ⚠️ Sudah melebihi batas harian sebesar Rp {formatIDR(totalSpending - batasHarian)}
-                </div>
-              )}
-            </div>
-          )}
+          {batasHarian > 0}
           
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? (
-                <div className="text-center py-4 text-gray-500">
+              {isLoading ? <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat daftar belanja...</p>
-                </div>
-              ) : shoppingList.length > 0 ? (
-                <div className="space-y-2">
-                  {shoppingList.map(item => (
-                    <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                </div> : shoppingList.length > 0 ? <div className="space-y-2">
+                  {shoppingList.map(item => <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
                       <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={item.purchased || false}
-                          onCheckedChange={() => toggleShoppingItem(item.id)}
-                          className="data-[state=checked]:bg-mibu-purple data-[state=checked]:border-mibu-purple"
-                        />
+                        <Checkbox checked={item.purchased || false} onCheckedChange={() => toggleShoppingItem(item.id)} className="data-[state=checked]:bg-mibu-purple data-[state=checked]:border-mibu-purple" />
                         <span className={`font-medium ${item.purchased ? 'line-through text-gray-400' : ''}`}>
                           {item.name}
                         </span>
-                        {item.purchased && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                        {item.purchased && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                             Terbeli & Tercatat
-                          </span>
-                        )}
+                          </span>}
                       </div>
                       <div className="text-right">
                         <div className={`text-sm text-mibu-purple font-medium ${item.purchased ? 'line-through text-gray-400' : ''}`}>
@@ -276,8 +199,7 @@ const Beranda = () => {
                           Qty: {item.quantity}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
                   
                   {/* Accurate Shopping Summary */}
                   <div className="pt-2 mt-2 border-t space-y-1">
@@ -308,22 +230,17 @@ const Beranda = () => {
                     </div>
                     
                     {/* Warning if planned shopping exceeds remaining budget */}
-                    {totalShoppingPlanned > remainingBudget && (
-                      <div className="text-xs text-red-600 bg-red-50 p-2 rounded mt-2">
+                    {totalShoppingPlanned > remainingBudget && <div className="text-xs text-red-600 bg-red-50 p-2 rounded mt-2">
                         ⚠️ Rencana belanja melebihi sisa budget sebesar Rp {formatIDR(totalShoppingPlanned - remainingBudget)}
-                      </div>
-                    )}
+                      </div>}
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
+                </div> : <div className="text-center py-8 text-gray-500">
                   Belum ada daftar belanja. 
                   <br />
                   <Link to="/belanja" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan item belanja
                   </Link>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
         </section>
@@ -338,40 +255,26 @@ const Beranda = () => {
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? (
-                <div className="text-center py-4 text-gray-500">
+              {isLoading ? <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat tugas hari ini...</p>
-                </div>
-              ) : todoItems.length > 0 ? (
-                <div className="space-y-2">
-                  {todoItems.map(todo => (
-                    <div key={todo.id} className="flex items-center py-2">
-                      <Checkbox
-                        checked={todo.completed}
-                        onCheckedChange={() => toggleTodoItem(todo.id)}
-                        className="mr-3 data-[state=checked]:bg-mibu-purple data-[state=checked]:border-mibu-purple"
-                      />
+                </div> : todoItems.length > 0 ? <div className="space-y-2">
+                  {todoItems.map(todo => <div key={todo.id} className="flex items-center py-2">
+                      <Checkbox checked={todo.completed} onCheckedChange={() => toggleTodoItem(todo.id)} className="mr-3 data-[state=checked]:bg-mibu-purple data-[state=checked]:border-mibu-purple" />
                       <span className={`${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                         {todo.title}
                       </span>
-                      {todo.completed && (
-                        <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                      {todo.completed && <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                           Selesai
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
+                        </span>}
+                    </div>)}
+                </div> : <div className="text-center py-8 text-gray-500">
                   Tidak ada tugas untuk hari ini.
                   <br />
                   <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan tugas baru
                   </Link>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
         </section>
@@ -386,47 +289,33 @@ const Beranda = () => {
           </div>
           <Card className="border-2">
             <CardContent className="p-4">
-              {isLoading ? (
-                <div className="text-center py-4 text-gray-500">
+              {isLoading ? <div className="text-center py-4 text-gray-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                   <p className="mt-2">Memuat acara penting...</p>
-                </div>
-              ) : importantEvents.length > 0 ? (
-                <div className="space-y-3">
-                  {importantEvents.map(event => (
-                    <div key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
+                </div> : importantEvents.length > 0 ? <div className="space-y-3">
+                  {importantEvents.map(event => <div key={event.id} className="p-3 bg-mibu-lightgray rounded-lg border border-gray-200">
                       <div className="font-medium text-gray-800">{event.title}</div>
-                      {event.description && (
-                        <div className="text-sm text-gray-600 mt-1">{event.description}</div>
-                      )}
+                      {event.description && <div className="text-sm text-gray-600 mt-1">{event.description}</div>}
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-sm text-mibu-purple">
                           {formatDate(event.date)}
                         </span>
-                        {event.time && (
-                          <span className="text-sm text-gray-500">
+                        {event.time && <span className="text-sm text-gray-500">
                             {event.time}
-                          </span>
-                        )}
+                          </span>}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
+                    </div>)}
+                </div> : <div className="text-center py-8 text-gray-500">
                   Belum ada acara penting minggu ini.
                   <br />
                   <Link to="/jadwal" className="text-mibu-purple hover:underline mt-2 inline-block">
                     Tambahkan acara baru
                   </Link>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
         </section>
       </div>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default Beranda;
