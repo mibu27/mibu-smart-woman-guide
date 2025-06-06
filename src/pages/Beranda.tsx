@@ -12,7 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeBeranda } from '@/hooks/useRealtimeBeranda';
 import { useCentralizedBudget } from '@/hooks/useCentralizedBudget';
 import { useExpenseRecording } from '@/hooks/useExpenseRecording';
-import { useExpenses } from '@/hooks/useExpenses';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -37,10 +36,6 @@ const Beranda = () => {
   } = useCentralizedBudget();
   
   const { recordExpense, removeExpense } = useExpenseRecording();
-  const { expenses, getTotalExpenses } = useExpenses();
-
-  // Get today's total expenses directly from expenses hook for debugging
-  const todayTotalFromExpenses = getTotalExpenses();
 
   const handleRefresh = async () => {
     console.log('Manual refresh triggered');
@@ -72,7 +67,7 @@ const Beranda = () => {
     }
   };
 
-  // Toggle shopping item dengan expense recording
+  // Toggle shopping item dengan expense recording - FIXED LOGIC
   const toggleShoppingItem = async (itemId: string) => {
     const item = shoppingList.find(item => item.id === itemId);
     if (!item) return;
@@ -82,15 +77,17 @@ const Beranda = () => {
 
     try {
       if (newPurchasedState) {
+        // Marking as purchased - record expense
         await recordExpense(item.name, item.price);
-        toast.success(`${item.name} ditandai sebagai dibeli`);
+        toast.success(`${item.name} ditandai sebagai dibeli dan tercatat sebagai pengeluaran`);
       } else {
+        // Unmarking as purchased - remove expense
         await removeExpense(item.name, item.price);
-        toast.success(`${item.name} dibatalkan dari pembelian`);
+        toast.success(`${item.name} dibatalkan dari pembelian dan dihapus dari pengeluaran`);
       }
-      // Budget data akan otomatis ter-refresh via expense recording
-      // Refresh beranda data juga untuk sinkronisasi
-      await refreshBerandaData();
+      
+      // Refresh both budget and beranda data to ensure synchronization
+      await Promise.all([refreshBudgetData(), refreshBerandaData()]);
     } catch (error) {
       console.error('Error toggling shopping item:', error);
       toast.error('Gagal mengupdate item belanja');
@@ -106,37 +103,39 @@ const Beranda = () => {
     });
   };
 
-  // Hitung total dari shopping list yang belum dibeli (rencana belanja)
+  // Calculate shopping totals accurately based on current state
   const totalShoppingPlanned = shoppingList
     .filter(item => !item.purchased)
     .reduce((total, item) => total + (item.price * item.quantity), 0);
 
-  // Hitung total dari shopping list yang sudah dibeli (dari daftar belanja ini)
   const totalShoppingPurchased = shoppingList
     .filter(item => item.purchased)
     .reduce((total, item) => total + (item.price * item.quantity), 0);
 
-  // Hitung pengeluaran lain (bukan dari shopping list)
+  // Calculate other expenses (total spending minus shopping purchased)
   const otherExpenses = Math.max(0, totalSpending - totalShoppingPurchased);
 
-  // Hitung sisa budget yang akurat
+  // Calculate remaining budget accurately
   const remainingBudget = Math.max(0, batasHarian - totalSpending);
   
-  // Persentase penggunaan budget dari total spending (semua pengeluaran)
+  // Calculate usage percentage
   const usagePercentage = batasHarian > 0 ? Math.round((totalSpending / batasHarian) * 100) : 0;
 
-  // Debug log untuk melihat data dengan lebih detail
-  console.log('=== BERANDA DEBUG ===');
-  console.log('Shopping List:', shoppingList);
-  console.log('Total Spending (from useCentralizedBudget):', totalSpending);
-  console.log('Total from useExpenses hook:', todayTotalFromExpenses);
-  console.log('Expenses list:', expenses);
-  console.log('Shopping Planned:', totalShoppingPlanned);
-  console.log('Shopping Purchased:', totalShoppingPurchased);
-  console.log('Other Expenses calculated:', otherExpenses);
-  console.log('Batas Harian:', batasHarian);
+  // Enhanced debug information
+  console.log('=== BERANDA SYNCHRONIZED DEBUG ===');
+  console.log('Shopping List with Purchase Status:', shoppingList);
+  console.log('Total Spending (Centralized):', totalSpending);
+  console.log('Shopping Planned (Not Purchased):', totalShoppingPlanned);
+  console.log('Shopping Purchased (This List):', totalShoppingPurchased);
+  console.log('Other Daily Expenses:', otherExpenses);
+  console.log('Daily Budget Limit:', batasHarian);
   console.log('Remaining Budget:', remainingBudget);
-  console.log('=== END DEBUG ===');
+  console.log('Synchronization Check:', {
+    totalCalculated: totalShoppingPurchased + otherExpenses,
+    totalFromBudget: totalSpending,
+    isMatching: (totalShoppingPurchased + otherExpenses) === totalSpending
+  });
+  console.log('=== END SYNCHRONIZED DEBUG ===');
 
   if (!user) {
     return (
@@ -154,7 +153,7 @@ const Beranda = () => {
         {/* Header with refresh button */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-semibold">Selamat datang!</h1>
+            <h1 className="text-xl font-semibold">Jendela Utama - Data Terpusat</h1>
             <p className="text-xs text-gray-500">
               Terakhir diperbarui: {lastUpdated.toLocaleTimeString('id-ID')}
             </p>
@@ -167,7 +166,7 @@ const Beranda = () => {
             className="text-mibu-purple border-mibu-purple"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            Sinkronisasi Data
           </Button>
         </div>
 
@@ -182,28 +181,27 @@ const Beranda = () => {
         {/* Shortcuts */}
         <ShortcutsSection />
 
-        {/* Debug Info - Will help us see what's happening */}
+        {/* Synchronized Data Status */}
         {process.env.NODE_ENV === 'development' && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
-            <strong>Debug Info:</strong>
-            <br />Total from useCentralizedBudget: Rp {formatIDR(totalSpending)}
-            <br />Total from useExpenses: Rp {formatIDR(todayTotalFromExpenses)}
-            <br />Shopping Purchased: Rp {formatIDR(totalShoppingPurchased)}
-            <br />Other Expenses: Rp {formatIDR(otherExpenses)}
-            <br />Expenses count: {expenses.length}
+          <div className="p-3 bg-green-50 border border-green-200 rounded text-xs">
+            <strong>Status Sinkronisasi Data:</strong>
+            <br />Total Pengeluaran: Rp {formatIDR(totalSpending)}
+            <br />Dari Belanja (Terbeli): Rp {formatIDR(totalShoppingPurchased)}
+            <br />Pengeluaran Lain: Rp {formatIDR(otherExpenses)}
+            <br />Status: {(totalShoppingPurchased + otherExpenses) === totalSpending ? '✅ Tersinkronisasi' : '❌ Tidak Tersinkronisasi'}
           </div>
         )}
 
-        {/* Shopping List */}
+        {/* Shopping List - Synchronized */}
         <section className="border border-gray-200 rounded-lg p-3 bg-slate-300">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-medium">Rencana Belanja Hari Ini</h2>
+            <h2 className="text-lg font-medium">Rencana Belanja Hari Ini (Live Data)</h2>
             <Link to="/belanja" className="text-sm text-mibu-purple hover:underline">
-              Lihat Semua
+              Kelola di Tab Belanja
             </Link>
           </div>
           
-          {/* Daily Budget Display */}
+          {/* Accurate Daily Budget Display */}
           {batasHarian > 0 && (
             <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
               <div className="flex justify-between items-center">
@@ -215,11 +213,11 @@ const Beranda = () => {
                 </span>
               </div>
               
-              {/* Detail breakdown pengeluaran - Show what we actually know */}
+              {/* Accurate breakdown */}
               <div className="mt-1 space-y-1">
                 {totalShoppingPurchased > 0 && (
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">• Dari daftar belanja ini:</span>
+                    <span className="text-gray-600">• Belanja dari daftar ini:</span>
                     <span className="text-green-600">Rp {formatIDR(totalShoppingPurchased)}</span>
                   </div>
                 )}
@@ -230,7 +228,6 @@ const Beranda = () => {
                   </div>
                 )}
                 
-                {/* Show total comparison for transparency */}
                 <div className="flex justify-between text-xs border-t pt-1 mt-1">
                   <span className="text-gray-800 font-medium">Total Pengeluaran Hari Ini:</span>
                   <span className="text-blue-600 font-medium">Rp {formatIDR(totalSpending)}</span>
@@ -265,6 +262,11 @@ const Beranda = () => {
                         <span className={`font-medium ${item.purchased ? 'line-through text-gray-400' : ''}`}>
                           {item.name}
                         </span>
+                        {item.purchased && (
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                            Terbeli & Tercatat
+                          </span>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className={`text-sm text-mibu-purple font-medium ${item.purchased ? 'line-through text-gray-400' : ''}`}>
@@ -277,7 +279,7 @@ const Beranda = () => {
                     </div>
                   ))}
                   
-                  {/* Shopping Summary */}
+                  {/* Accurate Shopping Summary */}
                   <div className="pt-2 mt-2 border-t space-y-1">
                     <div className="flex justify-between text-sm font-semibold">
                       <span>Total Daftar Belanja:</span>
@@ -329,9 +331,9 @@ const Beranda = () => {
         {/* To Do List */}
         <section className="border border-gray-200 rounded-lg p-3 bg-slate-200">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-medium">To Do List Hari Ini</h2>
+            <h2 className="text-lg font-medium">To Do List Hari Ini (Live Data)</h2>
             <Link to="/jadwal" className="text-sm text-mibu-purple hover:underline">
-              Lihat Semua
+              Kelola di Tab Jadwal
             </Link>
           </div>
           <Card className="border-2">
@@ -353,6 +355,11 @@ const Beranda = () => {
                       <span className={`${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                         {todo.title}
                       </span>
+                      {todo.completed && (
+                        <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          Selesai
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -372,9 +379,9 @@ const Beranda = () => {
         {/* Important Events */}
         <section className="border border-gray-200 rounded-lg p-3 bg-slate-100">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-medium">Acara Penting</h2>
+            <h2 className="text-lg font-medium">Acara Penting (Live Data)</h2>
             <Link to="/jadwal" className="text-sm text-mibu-purple hover:underline">
-              Lihat Semua
+              Kelola di Tab Jadwal
             </Link>
           </div>
           <Card className="border-2">

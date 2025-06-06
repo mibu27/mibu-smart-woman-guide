@@ -60,8 +60,8 @@ export const useRealtimeBeranda = () => {
 
       console.log('Fetching Beranda data for user:', user.id);
 
-      // Parallel fetch untuk performance
-      const [tasksResult, eventsResult, shoppingResult] = await Promise.all([
+      // Parallel fetch untuk performance dengan shopping items yang sudah ter-mapping dengan expenses
+      const [tasksResult, eventsResult, shoppingResult, expensesResult] = await Promise.all([
         supabase
           .from('tasks')
           .select('id, title, completed, date')
@@ -84,8 +84,25 @@ export const useRealtimeBeranda = () => {
           .select('id, name, price, quantity')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(5)
+          .limit(5),
+
+        // Fetch today's expenses to determine purchased status
+        supabase
+          .from('expenses')
+          .select('description, amount')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .eq('category', 'belanja')
       ]);
+
+      // Create a map of purchased items from expenses
+      const purchasedItems = new Map();
+      if (expensesResult.data) {
+        expensesResult.data.forEach(expense => {
+          const key = `${expense.description}-${expense.amount}`;
+          purchasedItems.set(key, true);
+        });
+      }
 
       const newData: BerandaData = {
         todoItems: tasksResult.data?.map(task => ({
@@ -101,24 +118,28 @@ export const useRealtimeBeranda = () => {
           date: event.date,
           time: event.time || ''
         })) || [],
-        shoppingList: shoppingResult.data?.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: Number(item.price),
-          quantity: item.quantity,
-          purchased: false
-        })) || [],
+        shoppingList: shoppingResult.data?.map(item => {
+          const itemKey = `${item.name}-${item.price}`;
+          return {
+            id: item.id,
+            name: item.name,
+            price: Number(item.price),
+            quantity: item.quantity,
+            purchased: purchasedItems.has(itemKey) || false
+          };
+        }) || [],
         isLoading: false,
         lastUpdated: new Date()
       };
 
-      console.log('Beranda data fetched:', newData);
+      console.log('Beranda data fetched with purchase status:', newData);
       setData(newData);
 
       // Log errors if any
       if (tasksResult.error) console.error('Tasks error:', tasksResult.error);
       if (eventsResult.error) console.error('Events error:', eventsResult.error);
       if (shoppingResult.error) console.error('Shopping error:', shoppingResult.error);
+      if (expensesResult.error) console.error('Expenses error:', expensesResult.error);
 
     } catch (error) {
       handleError(error as Error, 'Error fetching Beranda data');
@@ -174,7 +195,7 @@ export const useRealtimeBeranda = () => {
       })
       .subscribe();
 
-    // Subscribe to expenses changes (affects shopping budget)
+    // Subscribe to expenses changes (affects shopping budget and purchase status)
     const expensesChannel = supabase
       .channel('beranda-expenses')
       .on('postgres_changes', {
