@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { z } from 'zod';
 import { validateForm } from '@/lib/validationSchemas';
@@ -20,22 +19,26 @@ export const useFormValidation = <T extends Record<string, any>>({
 
   const validateField = useCallback((name: string, value: any) => {
     try {
-      // Validate single field
-      const fieldSchema = schema.shape[name as keyof typeof schema.shape];
-      if (fieldSchema) {
-        fieldSchema.parse(value);
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[name];
-          return newErrors;
-        });
-      }
+      // For single field validation, we'll validate the entire object
+      // and only keep the error for the specific field
+      const tempData = { [name]: value } as Partial<T>;
+      schema.parse(tempData);
+      
+      // If no error, clear the field error
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        setErrors(prev => ({
-          ...prev,
-          [name]: error.errors[0]?.message || 'Invalid input'
-        }));
+        const fieldError = error.errors.find(err => err.path.includes(name));
+        if (fieldError) {
+          setErrors(prev => ({
+            ...prev,
+            [name]: fieldError.message
+          }));
+        }
       }
     }
   }, [schema]);
@@ -50,7 +53,11 @@ export const useFormValidation = <T extends Record<string, any>>({
       setErrors(validation.errors || {});
       if (showToastOnError) {
         const firstError = Object.values(validation.errors || {})[0];
-        toast.error(firstError || 'Form tidak valid');
+        if (firstError) {
+          toast.error(String(firstError));
+        } else {
+          toast.error('Form tidak valid');
+        }
       }
       setIsSubmitting(false);
       return false;
