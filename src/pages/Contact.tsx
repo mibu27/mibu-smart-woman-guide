@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone, MessageSquare, MessageCircle, Clock } from 'lucide-react';
@@ -7,11 +7,50 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useFormValidation } from '@/hooks/useFormValidation';
+import { contactSchema } from '@/lib/validationSchemas';
+import LoadingSpinner from '@/components/ui/loading-spinner';
 
 const Contact = () => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+
+  const { 
+    errors, 
+    isSubmitting, 
+    validateField, 
+    handleSubmit,
+    getFieldError 
+  } = useFormValidation({
+    schema: contactSchema,
+    onSubmit: async (data) => {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('Contact form submitted:', data);
+      toast.success("Pesan Anda telah terkirim! Kami akan segera menghubungi Anda.");
+      
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+      });
+    }
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    validateField(field, value);
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Pesan Anda telah terkirim! Kami akan segera menghubungi Anda.");
+    handleSubmit(formData);
   };
 
   return (
@@ -26,36 +65,86 @@ const Contact = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <label htmlFor="name" className="text-sm font-medium">
-                    Nama Lengkap
+                    Nama Lengkap *
                   </label>
-                  <Input id="name" required />
+                  <Input 
+                    id="name" 
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className={getFieldError('name') ? 'border-red-500' : ''}
+                    placeholder="Masukkan nama lengkap"
+                  />
+                  {getFieldError('name') && (
+                    <p className="text-sm text-red-600">{getFieldError('name')}</p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <label htmlFor="email" className="text-sm font-medium">
-                    Email
+                    Email *
                   </label>
-                  <Input id="email" type="email" required />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={getFieldError('email') ? 'border-red-500' : ''}
+                    placeholder="contoh@email.com"
+                  />
+                  {getFieldError('email') && (
+                    <p className="text-sm text-red-600">{getFieldError('email')}</p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <label htmlFor="subject" className="text-sm font-medium">
-                    Subjek
+                    Subjek *
                   </label>
-                  <Input id="subject" required />
+                  <Input 
+                    id="subject" 
+                    value={formData.subject}
+                    onChange={(e) => handleInputChange('subject', e.target.value)}
+                    className={getFieldError('subject') ? 'border-red-500' : ''}
+                    placeholder="Subjek pesan"
+                  />
+                  {getFieldError('subject') && (
+                    <p className="text-sm text-red-600">{getFieldError('subject')}</p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <label htmlFor="message" className="text-sm font-medium">
-                    Pesan
+                    Pesan *
                   </label>
-                  <Textarea id="message" rows={4} required />
+                  <Textarea 
+                    id="message" 
+                    rows={4} 
+                    value={formData.message}
+                    onChange={(e) => handleInputChange('message', e.target.value)}
+                    className={getFieldError('message') ? 'border-red-500' : ''}
+                    placeholder="Tulis pesan Anda di sini..."
+                  />
+                  {getFieldError('message') && (
+                    <p className="text-sm text-red-600">{getFieldError('message')}</p>
+                  )}
                 </div>
+
                 <Button 
                   type="submit" 
                   className="w-full bg-mibu-purple hover:bg-mibu-darkpurple"
+                  disabled={isSubmitting}
                 >
-                  Kirim Pesan
+                  {isSubmitting ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span className="ml-2">Mengirim...</span>
+                    </>
+                  ) : (
+                    'Kirim Pesan'
+                  )}
                 </Button>
               </form>
             </CardContent>
