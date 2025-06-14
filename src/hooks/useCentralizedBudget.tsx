@@ -129,25 +129,29 @@ export const useCentralizedBudget = () => {
 
   // Real-time subscription for expenses changes
   useEffect(() => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const setupRealtimeSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const expensesChannel = supabase
-      .channel('budget-expenses-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'expenses',
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        console.log('Expenses changed, refreshing budget');
-        fetchBudgetData();
-      })
-      .subscribe();
+      const expensesChannel = supabase
+        .channel('budget-expenses-realtime')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          console.log('Expenses changed, refreshing budget');
+          fetchBudgetData();
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(expensesChannel);
+      return () => {
+        supabase.removeChannel(expensesChannel);
+      };
     };
+
+    setupRealtimeSubscription();
   }, [fetchBudgetData]);
 
   return {
