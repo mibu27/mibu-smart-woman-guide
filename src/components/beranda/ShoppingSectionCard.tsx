@@ -16,7 +16,7 @@ interface ShoppingSectionCardProps {
   isLoading: boolean;
   toggleShoppingItem: (itemId: string) => void;
   formatIDR: (value: number) => string;
-  totalSpending?: number; // Total pengeluaran dari semua expenses hari ini
+  totalSpending?: number;
 }
 
 export const ShoppingSectionCard = ({
@@ -26,14 +26,18 @@ export const ShoppingSectionCard = ({
   formatIDR,
   totalSpending = 0
 }: ShoppingSectionCardProps) => {
-  const totalShoppingPlanned = shoppingList
-    .filter(item => !item.purchased)
-    .reduce((total, item) => total + item.price * item.quantity, 0);
-
   // Hitung total dari shopping list yang sudah dibeli (tercentang)
   const totalFromShoppingList = shoppingList
     .filter(item => item.purchased)
     .reduce((total, item) => total + item.price * item.quantity, 0);
+
+  // Hitung total rencana belanja (yang belum dibeli)
+  const totalShoppingPlanned = shoppingList
+    .filter(item => !item.purchased)
+    .reduce((total, item) => total + item.price * item.quantity, 0);
+
+  // Hitung pengeluaran lainnya (total pengeluaran - dari shopping list)
+  const otherExpenses = Math.max(0, totalSpending - totalFromShoppingList);
 
   const handleToggleItem = async (itemId: string) => {
     try {
@@ -85,16 +89,16 @@ export const ShoppingSectionCard = ({
                   <span className="font-medium text-green-600">Rp {formatIDR(totalFromShoppingList)}</span>
                 </div>
               )}
-              {totalSpending > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Total pengeluaran hari ini:</span>
-                  <span className="font-medium text-red-600">Rp {formatIDR(totalSpending)}</span>
-                </div>
-              )}
-              {totalSpending > totalFromShoppingList && (
+              {otherExpenses > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Pengeluaran lainnya:</span>
-                  <span className="font-medium text-orange-600">Rp {formatIDR(totalSpending - totalFromShoppingList)}</span>
+                  <span className="font-medium text-orange-600">Rp {formatIDR(otherExpenses)}</span>
+                </div>
+              )}
+              {totalSpending > 0 && (
+                <div className="flex justify-between text-sm font-semibold border-t pt-1">
+                  <span className="text-gray-800">Total pengeluaran hari ini:</span>
+                  <span className="text-red-600">Rp {formatIDR(totalSpending)}</span>
                 </div>
               )}
               {totalShoppingPlanned > 0 && (
