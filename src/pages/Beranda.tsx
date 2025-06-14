@@ -12,7 +12,7 @@ import { EventsSectionCard } from '@/components/beranda/EventsSectionCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeBeranda } from '@/hooks/useRealtimeBeranda';
 import { useCentralizedBudget } from '@/hooks/useCentralizedBudget';
-import { useExpenseRecording } from '@/hooks/useExpenseRecording';
+import { useUnifiedShopping } from '@/hooks/useUnifiedShopping';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -21,10 +21,10 @@ const Beranda = () => {
   const {
     todoItems,
     importantEvents,
-    shoppingList,
     isLoading,
     refresh: refreshBerandaData
   } = useRealtimeBeranda();
+  
   const {
     batasHarian,
     totalSpending,
@@ -33,7 +33,8 @@ const Beranda = () => {
     refreshBudgetData,
     loading: budgetLoading
   } = useCentralizedBudget();
-  const { recordExpense, removeExpense } = useExpenseRecording();
+
+  const { toggleShoppingItem } = useUnifiedShopping();
 
   const handleRefresh = async () => {
     await Promise.all([refreshBerandaData(), refreshBudgetData()]);
@@ -60,22 +61,10 @@ const Beranda = () => {
     }
   };
 
-  const toggleShoppingItem = async (itemId: string) => {
-    const item = shoppingList.find(item => item.id === itemId);
-    if (!item) return;
-    
-    const newPurchasedState = !item.purchased;
-    
+  const handleToggleShoppingItem = async (itemId: string) => {
     try {
-      if (newPurchasedState) {
-        await recordExpense(item.name, item.price);
-        toast.success(`${item.name} ditandai sebagai dibeli`);
-      } else {
-        await removeExpense(item.name, item.price);
-        toast.success(`${item.name} dibatalkan dari pembelian`);
-      }
-
-      await Promise.all([refreshBudgetData(), refreshBerandaData()]);
+      await toggleShoppingItem(itemId);
+      await refreshBudgetData();
     } catch (error) {
       console.error('Error toggling shopping item:', error);
       toast.error('Gagal mengupdate item belanja');
@@ -130,9 +119,9 @@ const Beranda = () => {
 
         {/* Shopping List */}
         <ShoppingSectionCard 
-          shoppingList={shoppingList}
+          shoppingList={[]}
           isLoading={isLoading}
-          toggleShoppingItem={toggleShoppingItem}
+          toggleShoppingItem={handleToggleShoppingItem}
           formatIDR={formatIDR}
         />
 

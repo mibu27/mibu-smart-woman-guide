@@ -1,16 +1,9 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from 'lucide-react';
-
-interface TodoItem {
-  id: string;
-  title: string;
-  completed: boolean;
-  date: string;
-}
+import { TodoItem } from '@/types/shared';
 
 interface TodoSectionCardProps {
   todoItems: TodoItem[];

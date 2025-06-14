@@ -1,15 +1,7 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
-
-interface ImportantEvent {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-}
+import { ImportantEvent } from '@/types/shared';
 
 interface EventsSectionCardProps {
   importantEvents: ImportantEvent[];

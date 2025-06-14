@@ -4,28 +4,22 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from 'lucide-react';
-
-interface ShoppingItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  purchased?: boolean;
-}
+import { ShoppingItem } from '@/types/shared';
+import { useUnifiedShopping } from '@/hooks/useUnifiedShopping';
 
 interface ShoppingSectionCardProps {
-  shoppingList: ShoppingItem[];
   isLoading: boolean;
   toggleShoppingItem: (itemId: string) => void;
   formatIDR: (value: number) => string;
 }
 
 export const ShoppingSectionCard = ({
-  shoppingList,
   isLoading,
   toggleShoppingItem,
   formatIDR
 }: ShoppingSectionCardProps) => {
+  const { shoppingList } = useUnifiedShopping();
+
   const totalShoppingPlanned = shoppingList
     .filter(item => !item.purchased)
     .reduce((total, item) => total + item.price * item.quantity, 0);
