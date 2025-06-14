@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,17 +41,17 @@ export const useUnifiedShopping = () => {
       if (shoppingResult.error) throw shoppingResult.error;
       if (expensesResult.error) throw expensesResult.error;
 
-      // Create purchased items map using exact matching
+      // Create purchased items map using exact matching with both name and price
       const purchasedItems = new Map();
       if (expensesResult.data) {
         expensesResult.data.forEach(expense => {
-          const key = `${expense.description}-${expense.amount}`;
+          const key = `${expense.description}-${Number(expense.amount)}`;
           purchasedItems.set(key, true);
         });
       }
 
       const items = shoppingResult.data?.map(item => {
-        const itemKey = `${item.name}-${item.price}`;
+        const itemKey = `${item.name}-${Number(item.price)}`;
         const purchased = purchasedItems.has(itemKey);
         return {
           id: item.id,
@@ -61,10 +62,12 @@ export const useUnifiedShopping = () => {
         };
       }) || [];
 
-      console.log('Shopping items fetched:', {
+      console.log('Shopping items mapping:', {
         totalItems: items.length,
         purchasedItems: items.filter(i => i.purchased).length,
-        expensesCount: expensesResult.data?.length || 0
+        expensesCount: expensesResult.data?.length || 0,
+        expenseItems: expensesResult.data?.map(e => `${e.description}-${e.amount}`) || [],
+        shoppingKeys: items.map(i => `${i.name}-${i.price}`)
       });
 
       setShoppingList(items);
