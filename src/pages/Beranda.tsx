@@ -34,7 +34,11 @@ const Beranda = () => {
     loading: budgetLoading
   } = useCentralizedBudget();
 
-  const { toggleShoppingItem } = useUnifiedShopping();
+  const { 
+    shoppingList, 
+    toggleShoppingItem,
+    isLoading: shoppingLoading 
+  } = useUnifiedShopping();
 
   const handleRefresh = async () => {
     await Promise.all([refreshBerandaData(), refreshBudgetData()]);
@@ -64,7 +68,6 @@ const Beranda = () => {
   const handleToggleShoppingItem = async (itemId: string) => {
     try {
       await toggleShoppingItem(itemId);
-      // Refresh budget data to update spending calculations
       await refreshBudgetData();
       toast.success('Item belanja berhasil diupdate');
     } catch (error) {
@@ -83,6 +86,8 @@ const Beranda = () => {
     );
   }
 
+  const totalLoading = isLoading || budgetLoading || shoppingLoading;
+
   return (
     <MainLayout title="Beranda">
       <div className="space-y-4">
@@ -93,10 +98,10 @@ const Beranda = () => {
             variant="outline" 
             size="sm" 
             onClick={handleRefresh} 
-            disabled={isLoading || budgetLoading}
+            disabled={totalLoading}
             className="text-mibu-purple border-mibu-purple"
           >
-            <RefreshCw className={`w-4 h-4 mr-1 ${isLoading || budgetLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-1 ${totalLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -121,7 +126,8 @@ const Beranda = () => {
 
         {/* Shopping List */}
         <ShoppingSectionCard 
-          isLoading={isLoading}
+          shoppingList={shoppingList}
+          isLoading={shoppingLoading}
           toggleShoppingItem={handleToggleShoppingItem}
           formatIDR={formatIDR}
         />

@@ -4,23 +4,26 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from 'lucide-react';
-import { useUnifiedShopping } from '@/hooks/useUnifiedShopping';
 
 interface ShoppingSectionCardProps {
+  shoppingList: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    purchased?: boolean;
+  }>;
   isLoading: boolean;
   toggleShoppingItem: (itemId: string) => void;
   formatIDR: (value: number) => string;
 }
 
 export const ShoppingSectionCard = ({
+  shoppingList,
   isLoading,
   toggleShoppingItem,
   formatIDR
 }: ShoppingSectionCardProps) => {
-  const { shoppingList, isLoading: shoppingLoading } = useUnifiedShopping();
-
-  const loading = isLoading || shoppingLoading;
-
   const totalShoppingPlanned = shoppingList
     .filter(item => !item.purchased)
     .reduce((total, item) => total + item.price * item.quantity, 0);
@@ -43,7 +46,7 @@ export const ShoppingSectionCard = ({
           </Link>
         </div>
         
-        {loading ? (
+        {isLoading ? (
           <div className="text-center py-4">
             <Loader2 className="w-5 h-5 animate-spin mx-auto text-mibu-purple" />
             <p className="text-sm text-gray-500 mt-2">Memuat...</p>
