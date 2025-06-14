@@ -1,27 +1,26 @@
 
 import { useRealtimeTodos } from './realtime/useRealtimeTodos';
 import { useRealtimeEvents } from './realtime/useRealtimeEvents';
-import { useUnifiedShopping } from './useUnifiedShopping';
+import { useCentralizedBudget } from './useCentralizedBudget';
 
 export const useRealtimeBeranda = () => {
   const { todoItems, isLoading: todosLoading, refresh: refreshTodos } = useRealtimeTodos();
   const { importantEvents, isLoading: eventsLoading, refresh: refreshEvents } = useRealtimeEvents();
-  const { shoppingList, isLoading: shoppingLoading, refresh: refreshShopping } = useUnifiedShopping();
+  const { refreshBudgetData, loading: budgetLoading } = useCentralizedBudget();
 
-  const isLoading = todosLoading || eventsLoading || shoppingLoading;
+  const isLoading = todosLoading || eventsLoading || budgetLoading;
 
   const refresh = async () => {
     await Promise.all([
       refreshTodos(),
       refreshEvents(), 
-      refreshShopping()
+      refreshBudgetData()
     ]);
   };
 
   return {
     todoItems,
     importantEvents,
-    shoppingList,
     isLoading,
     refresh,
     lastUpdated: new Date()

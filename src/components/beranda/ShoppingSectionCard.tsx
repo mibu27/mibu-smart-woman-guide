@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from 'lucide-react';
-import { ShoppingItem } from '@/types/shared';
 import { useUnifiedShopping } from '@/hooks/useUnifiedShopping';
 
 interface ShoppingSectionCardProps {
@@ -18,11 +17,21 @@ export const ShoppingSectionCard = ({
   toggleShoppingItem,
   formatIDR
 }: ShoppingSectionCardProps) => {
-  const { shoppingList } = useUnifiedShopping();
+  const { shoppingList, isLoading: shoppingLoading } = useUnifiedShopping();
+
+  const loading = isLoading || shoppingLoading;
 
   const totalShoppingPlanned = shoppingList
     .filter(item => !item.purchased)
     .reduce((total, item) => total + item.price * item.quantity, 0);
+
+  const handleToggleItem = async (itemId: string) => {
+    try {
+      await toggleShoppingItem(itemId);
+    } catch (error) {
+      console.error('Error toggling shopping item in beranda:', error);
+    }
+  };
 
   return (
     <Card>
@@ -34,7 +43,7 @@ export const ShoppingSectionCard = ({
           </Link>
         </div>
         
-        {isLoading ? (
+        {loading ? (
           <div className="text-center py-4">
             <Loader2 className="w-5 h-5 animate-spin mx-auto text-mibu-purple" />
             <p className="text-sm text-gray-500 mt-2">Memuat...</p>
@@ -46,7 +55,7 @@ export const ShoppingSectionCard = ({
                 <div className="flex items-center gap-3">
                   <Checkbox 
                     checked={item.purchased || false}
-                    onCheckedChange={() => toggleShoppingItem(item.id)}
+                    onCheckedChange={() => handleToggleItem(item.id)}
                     className="data-[state=checked]:bg-mibu-purple"
                   />
                   <span className={`${item.purchased ? 'line-through text-gray-400' : 'text-gray-700'}`}>

@@ -64,9 +64,11 @@ const Beranda = () => {
   const handleToggleShoppingItem = async (itemId: string) => {
     try {
       await toggleShoppingItem(itemId);
+      // Refresh budget data to update spending calculations
       await refreshBudgetData();
+      toast.success('Item belanja berhasil diupdate');
     } catch (error) {
-      console.error('Error toggling shopping item:', error);
+      console.error('Error toggling shopping item in beranda:', error);
       toast.error('Gagal mengupdate item belanja');
     }
   };
@@ -94,7 +96,7 @@ const Beranda = () => {
             disabled={isLoading || budgetLoading}
             className="text-mibu-purple border-mibu-purple"
           >
-            <RefreshCw className={`w-4 h-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-1 ${isLoading || budgetLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
