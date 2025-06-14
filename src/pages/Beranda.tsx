@@ -119,7 +119,6 @@ const Beranda = () => {
 
         {/* Shopping List */}
         <ShoppingSectionCard 
-          shoppingList={[]}
           isLoading={isLoading}
           toggleShoppingItem={handleToggleShoppingItem}
           formatIDR={formatIDR}
