@@ -1,4 +1,3 @@
-
 import React from 'react';
 import MainLayout from '@/components/MainLayout';
 import { RefreshCw } from 'lucide-react';
@@ -133,6 +132,7 @@ const Beranda = () => {
           isLoading={shoppingLoading}
           toggleShoppingItem={handleToggleShoppingItem}
           formatIDR={formatIDR}
+          totalSpending={totalSpending}
         />
 
         {/* To Do List */}

@@ -16,21 +16,22 @@ interface ShoppingSectionCardProps {
   isLoading: boolean;
   toggleShoppingItem: (itemId: string) => void;
   formatIDR: (value: number) => string;
+  totalSpending?: number; // Add this to use actual total spending
 }
 
 export const ShoppingSectionCard = ({
   shoppingList,
   isLoading,
   toggleShoppingItem,
-  formatIDR
+  formatIDR,
+  totalSpending = 0
 }: ShoppingSectionCardProps) => {
   const totalShoppingPlanned = shoppingList
     .filter(item => !item.purchased)
     .reduce((total, item) => total + item.price * item.quantity, 0);
 
-  const totalShoppingPurchased = shoppingList
-    .filter(item => item.purchased)
-    .reduce((total, item) => total + item.price * item.quantity, 0);
+  // Use the actual total spending from budget calculation instead of just purchased shopping items
+  const totalShoppingPurchased = totalSpending;
 
   const handleToggleItem = async (itemId: string) => {
     try {
@@ -78,7 +79,7 @@ export const ShoppingSectionCard = ({
             <div className="border-t pt-2 mt-2 space-y-1">
               {totalShoppingPurchased > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Sudah dibeli hari ini:</span>
+                  <span className="text-gray-600">Total belanja hari ini:</span>
                   <span className="font-medium text-red-600">Rp {formatIDR(totalShoppingPurchased)}</span>
                 </div>
               )}
