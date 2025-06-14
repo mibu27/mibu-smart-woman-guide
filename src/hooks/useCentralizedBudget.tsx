@@ -87,10 +87,18 @@ export const useCentralizedBudget = () => {
         batasHarian = Math.max(0, Math.round(dailyLimit));
       }
 
-      // Process expenses
-      if (expensesResult.data) {
+      // Process expenses - sum all expenses for today
+      if (expensesResult.data && expensesResult.data.length > 0) {
         totalSpending = expensesResult.data.reduce((sum, expense) => sum + Number(expense.amount), 0);
       }
+
+      console.log('Budget calculation:', {
+        gajiBulanan,
+        belanjaWajib, 
+        batasHarian,
+        totalSpending,
+        expensesCount: expensesResult.data?.length || 0
+      });
 
       // Calculate derived values
       const budgetPercentageUsed = batasHarian > 0 ? Math.min(totalSpending / batasHarian * 100, 100) : 0;
@@ -117,6 +125,29 @@ export const useCentralizedBudget = () => {
 
   useEffect(() => {
     fetchBudgetData();
+  }, [fetchBudgetData]);
+
+  // Real-time subscription for expenses changes
+  useEffect(() => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const expensesChannel = supabase
+      .channel('budget-expenses-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'expenses',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        console.log('Expenses changed, refreshing budget');
+        fetchBudgetData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(expensesChannel);
+    };
   }, [fetchBudgetData]);
 
   return {

@@ -68,7 +68,10 @@ const Beranda = () => {
   const handleToggleShoppingItem = async (itemId: string) => {
     try {
       await toggleShoppingItem(itemId);
-      await refreshBudgetData();
+      // Give a small delay to ensure the expense is recorded before refreshing budget
+      setTimeout(() => {
+        refreshBudgetData();
+      }, 500);
       toast.success('Item belanja berhasil diupdate');
     } catch (error) {
       console.error('Error toggling shopping item in beranda:', error);

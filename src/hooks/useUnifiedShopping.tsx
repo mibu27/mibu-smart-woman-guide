@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,8 +28,7 @@ export const useUnifiedShopping = () => {
           .from('shopping_items')
           .select('id, name, price, quantity')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5),
+          .order('created_at', { ascending: false }),
         supabase
           .from('expenses')
           .select('description, amount')
@@ -42,7 +40,7 @@ export const useUnifiedShopping = () => {
       if (shoppingResult.error) throw shoppingResult.error;
       if (expensesResult.error) throw expensesResult.error;
 
-      // Create purchased items map
+      // Create purchased items map using exact matching
       const purchasedItems = new Map();
       if (expensesResult.data) {
         expensesResult.data.forEach(expense => {
@@ -53,14 +51,21 @@ export const useUnifiedShopping = () => {
 
       const items = shoppingResult.data?.map(item => {
         const itemKey = `${item.name}-${item.price}`;
+        const purchased = purchasedItems.has(itemKey);
         return {
           id: item.id,
           name: item.name,
           price: Number(item.price),
           quantity: item.quantity,
-          purchased: purchasedItems.has(itemKey) || false
+          purchased: purchased
         };
       }) || [];
+
+      console.log('Shopping items fetched:', {
+        totalItems: items.length,
+        purchasedItems: items.filter(i => i.purchased).length,
+        expensesCount: expensesResult.data?.length || 0
+      });
 
       setShoppingList(items);
 
@@ -87,11 +92,17 @@ export const useUnifiedShopping = () => {
     try {
       if (newPurchasedState) {
         await recordExpense(item.name, item.price);
+        console.log('Item purchased and expense recorded:', item.name, item.price);
         toast.success(`${item.name} ditandai sebagai dibeli`);
       } else {
         await removeExpense(item.name, item.price);
+        console.log('Item unpurchased and expense removed:', item.name, item.price);
         toast.success(`${item.name} dibatalkan dari pembelian`);
       }
+      
+      // Force refresh shopping data to ensure sync
+      await fetchShoppingItems();
+      
     } catch (error) {
       // Revert optimistic update on error
       setShoppingList(prev => prev.map(item => 
@@ -101,7 +112,7 @@ export const useUnifiedShopping = () => {
       ));
       handleError(error as Error, 'Error toggling shopping item');
     }
-  }, [shoppingList, recordExpense, removeExpense, handleError]);
+  }, [shoppingList, recordExpense, removeExpense, handleError, fetchShoppingItems]);
 
   const addItem = useCallback((name: string, price: number) => {
     if (!name.trim() || price <= 0) {
