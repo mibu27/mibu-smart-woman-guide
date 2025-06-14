@@ -26,18 +26,35 @@ export const ShoppingSectionCard = ({
   formatIDR,
   totalSpending = 0
 }: ShoppingSectionCardProps) => {
+  console.log('ShoppingSectionCard data:', {
+    shoppingListCount: shoppingList.length,
+    totalSpending,
+    shoppingItems: shoppingList.map(item => ({
+      name: item.name,
+      price: item.price,
+      purchased: item.purchased
+    }))
+  });
+
   // Hitung total dari shopping list yang sudah dibeli (tercentang)
   const totalFromShoppingList = shoppingList
     .filter(item => item.purchased)
-    .reduce((total, item) => total + item.price * item.quantity, 0);
+    .reduce((total, item) => total + (item.price * item.quantity), 0);
 
   // Hitung total rencana belanja (yang belum dibeli)
   const totalShoppingPlanned = shoppingList
     .filter(item => !item.purchased)
-    .reduce((total, item) => total + item.price * item.quantity, 0);
+    .reduce((total, item) => total + (item.price * item.quantity), 0);
 
   // Hitung pengeluaran lainnya (total pengeluaran - dari shopping list)
   const otherExpenses = Math.max(0, totalSpending - totalFromShoppingList);
+
+  console.log('ShoppingSectionCard calculations:', {
+    totalFromShoppingList,
+    totalShoppingPlanned,
+    otherExpenses,
+    totalSpending
+  });
 
   const handleToggleItem = async (itemId: string) => {
     try {
@@ -73,19 +90,19 @@ export const ShoppingSectionCard = ({
                     className="data-[state=checked]:bg-mibu-purple"
                   />
                   <span className={`${item.purchased ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                    {item.name}
+                    {item.name} ({item.quantity}x)
                   </span>
                 </div>
                 <span className={`text-sm font-medium ${item.purchased ? 'line-through text-gray-400' : 'text-mibu-purple'}`}>
-                  Rp {formatIDR(item.price)}
+                  Rp {formatIDR(item.price * item.quantity)}
                 </span>
               </div>
             ))}
             
-            <div className="border-t pt-2 mt-2 space-y-1">
+            <div className="border-t pt-3 mt-3 space-y-2">
               {totalFromShoppingList > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Dari daftar belanja:</span>
+                  <span className="text-gray-600">Belanja dari daftar:</span>
                   <span className="font-medium text-green-600">Rp {formatIDR(totalFromShoppingList)}</span>
                 </div>
               )}
@@ -96,7 +113,7 @@ export const ShoppingSectionCard = ({
                 </div>
               )}
               {totalSpending > 0 && (
-                <div className="flex justify-between text-sm font-semibold border-t pt-1">
+                <div className="flex justify-between text-sm font-semibold border-t pt-2">
                   <span className="text-gray-800">Total pengeluaran hari ini:</span>
                   <span className="text-red-600">Rp {formatIDR(totalSpending)}</span>
                 </div>

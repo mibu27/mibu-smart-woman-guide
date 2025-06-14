@@ -11,7 +11,13 @@ interface BudgetAlertProps {
 }
 
 export const BudgetAlert = ({ isOverBudget, totalSpending, batasHarian, formatIDR }: BudgetAlertProps) => {
-  if (!isOverBudget) return null;
+  console.log('BudgetAlert data:', {
+    isOverBudget,
+    totalSpending,
+    batasHarian
+  });
+
+  if (!isOverBudget || batasHarian <= 0) return null;
   
   return (
     <Alert variant="destructive" className="bg-red-50 text-red-800 border-red-200">
