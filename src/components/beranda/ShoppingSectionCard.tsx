@@ -28,6 +28,10 @@ export const ShoppingSectionCard = ({
     .filter(item => !item.purchased)
     .reduce((total, item) => total + item.price * item.quantity, 0);
 
+  const totalShoppingPurchased = shoppingList
+    .filter(item => item.purchased)
+    .reduce((total, item) => total + item.price * item.quantity, 0);
+
   const handleToggleItem = async (itemId: string) => {
     try {
       await toggleShoppingItem(itemId);
@@ -71,14 +75,20 @@ export const ShoppingSectionCard = ({
               </div>
             ))}
             
-            {totalShoppingPlanned > 0 && (
-              <div className="border-t pt-2 mt-2">
+            <div className="border-t pt-2 mt-2 space-y-1">
+              {totalShoppingPurchased > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>Total rencana belanja:</span>
+                  <span className="text-gray-600">Sudah dibeli hari ini:</span>
+                  <span className="font-medium text-red-600">Rp {formatIDR(totalShoppingPurchased)}</span>
+                </div>
+              )}
+              {totalShoppingPlanned > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Rencana belanja:</span>
                   <span className="font-medium text-mibu-purple">Rp {formatIDR(totalShoppingPlanned)}</span>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ) : (
           <div className="text-center py-6 text-gray-500">
